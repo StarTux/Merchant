@@ -1,0 +1,31 @@
+main: com.cavetale.merchant.MerchantPlugin
+name: Merchant
+version: 0.1
+api-version: 1.13
+description: Merchants with custom trades
+author: StarTux
+website: https://cavetale.com
+depend: []
+softdepend: []
+commands:
+  merchant:
+    aliases: []
+    description: Merchant Command
+    permission: merchant.merchant
+    usage: |-
+      -- Recipes
+      /merchant create <name>
+      /merchant list
+      /merchant delete <num>
+      /merchant open <name> [player]
+      -- Spawns
+      /merchant spawn <merchant>
+      /merchant listspawns
+      /merchant deletespawn <num>
+      -- IO
+      /merchant reload
+      /merchant save
+permissions:
+  merchant.merchant:
+    description: Use /merchant
+    default: op
