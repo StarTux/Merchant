@@ -4,7 +4,7 @@ version: 0.1
 api-version: 1.13
 description: Merchants with custom trades
 author: StarTux
-website: https://cavetale.com
+website: https://github.com/StarTux/Merchant
 depend: []
 softdepend: []
 commands:

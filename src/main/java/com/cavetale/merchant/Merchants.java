@@ -9,6 +9,7 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Villager;
 import org.bukkit.inventory.ItemStack;
@@ -94,7 +95,7 @@ public final class Merchants implements Runnable {
                 iter.remove();
                 continue;
             }
-            if (!spawn.isNearby(mob.getLocation(), 3.0)) {
+            if (!spawn.isNearby(mob.getLocation(), 1.0)) {
                 mob.teleport(spawn.toLocation());
             }
         }
@@ -113,6 +114,7 @@ public final class Merchants implements Runnable {
                         v.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0);
                         v.setRecipes(createMerchantRecipes(spawn.merchant));
                         v.setPersistent(false);
+                        v.setCollidable(false);
                     });
                 if (villager == null) {
                     plugin.getLogger().info("Failed to spawn: " + spawn.simplified());
@@ -124,5 +126,14 @@ public final class Merchants implements Runnable {
             }
         }
         ticks += 1;
+    }
+
+    Spawn spawnOf(Entity entity) {
+        if (!(entity instanceof Mob)) return null;
+        Mob mob = (Mob) entity;
+        for (Map.Entry<Spawn, Mob> entry : mobs.entrySet()) {
+            if (mob.equals(entry.getValue())) return entry.getKey();
+        }
+        return null;
     }
 }
