@@ -93,6 +93,9 @@ final class MerchantCommand implements TabExecutor {
             menu.recipe = recipe;
             Inventory inventory = plugin.getServer()
                 .createInventory(menu, 9, "Edit Merchant Recipe");
+            inventory.setItem(0, Items.deserialize(recipe.inA));
+            inventory.setItem(1, Items.deserialize(recipe.inB));
+            inventory.setItem(2, Items.deserialize(recipe.out));
             menu.inventory = inventory;
             player.openInventory(inventory);
             return true;
