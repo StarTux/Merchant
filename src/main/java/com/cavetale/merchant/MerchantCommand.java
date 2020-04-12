@@ -81,6 +81,22 @@ final class MerchantCommand implements TabExecutor {
             sender.sendMessage("Deleted recipe #" + i + ": " + Items.toString(recipe));
             return true;
         }
+        case "edit": {
+            if (args.length != 1) return false;
+            Player player = playerOf(sender);
+            int i = intOf(args[0]);
+            if (i < 0 || i >= plugin.merchants.recipes.recipes.size()) {
+                throw new Wrong("Illegal index: " + i);
+            }
+            Recipe recipe = plugin.merchants.recipes.recipes.get(i);
+            RecipeMakerMenu menu = new RecipeMakerMenu(recipe.merchant);
+            menu.recipe = recipe;
+            Inventory inventory = plugin.getServer()
+                .createInventory(menu, 9, "Edit Merchant Recipe");
+            menu.inventory = inventory;
+            player.openInventory(inventory);
+            return true;
+        }
         case "open": {
             if (args.length != 1 && args.length != 2) return false;
             Player target;

@@ -8,5 +8,6 @@ import org.bukkit.inventory.InventoryHolder;
 @RequiredArgsConstructor
 public final class RecipeMakerMenu implements InventoryHolder {
     final String merchant;
+    Recipe recipe; // edit
     @Getter Inventory inventory;
 }

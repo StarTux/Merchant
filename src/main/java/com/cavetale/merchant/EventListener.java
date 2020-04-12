@@ -29,15 +29,22 @@ public final class EventListener implements Listener {
         ItemStack c = Items.simplify(inv.getItem(2));
         if (c == null) return;
         if (a == null) return;
-        Recipe recipe = new Recipe();
+        Recipe recipe = menu.recipe != null
+            ? menu.recipe
+            : new Recipe();
         recipe.merchant = menu.merchant;
         recipe.inA = Items.serialize(a);
         recipe.inB = Items.serialize(b);
         recipe.out = Items.serialize(c);
-        plugin.merchants.recipes.recipes.add(recipe);
+        if (menu.recipe == null) {
+            plugin.merchants.recipes.recipes.add(recipe);
+            player.sendMessage(ChatColor.YELLOW
+                               + "New recipe created: " + Items.toString(recipe));
+        } else {
+            player.sendMessage(ChatColor.YELLOW
+                               + "Recipe edited: " + Items.toString(recipe));
+        }
         plugin.merchants.save();
-        player.sendMessage(ChatColor.YELLOW
-                           + "New recipe created: " + Items.toString(recipe));
     }
 
     @EventHandler

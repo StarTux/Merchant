@@ -16,6 +16,7 @@ commands:
       -- Recipes
       /merchant create <name>
       /merchant list
+      /merchant edit <num>
       /merchant delete <num>
       /merchant open <name> [player]
       -- Spawns
