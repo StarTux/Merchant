@@ -12,6 +12,7 @@ import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Merchant;
 
 @RequiredArgsConstructor
 public final class EventListener implements Listener {
@@ -62,7 +63,12 @@ public final class EventListener implements Listener {
         entity.setPersistent(false);
         event.setCancelled(true);
         Player player = event.getPlayer();
-        player.openMerchant(plugin.merchants.createMerchant(spawn.merchant), false);
+        if ("Repairman".equals(spawn.merchant)) {
+            Merchant merchant = plugin.merchants.createRepairman(player, spawn.merchant);
+            player.openMerchant(merchant, false);
+        } else {
+            player.openMerchant(plugin.merchants.createMerchant(spawn.merchant), false);
+        }
         plugin.getLogger().info(player.getName() + " opened " + spawn.merchant);
     }
 

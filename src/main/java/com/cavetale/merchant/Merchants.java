@@ -8,13 +8,17 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
+import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Merchant;
 import org.bukkit.inventory.MerchantRecipe;
+import org.bukkit.inventory.meta.Damageable;
+import org.bukkit.inventory.meta.ItemMeta;
 
 @RequiredArgsConstructor
 public final class Merchants implements Runnable {
@@ -73,6 +77,27 @@ public final class Merchants implements Runnable {
     Merchant createMerchant(String name) {
         Merchant merchant = plugin.getServer().createMerchant(name);
         merchant.setRecipes(createMerchantRecipes(name));
+        return merchant;
+    }
+
+    Merchant createRepairman(Player player, String name) {
+        Merchant merchant = plugin.getServer().createMerchant(name);
+        List<MerchantRecipe> list = new ArrayList<>();
+        for (ItemStack item : player.getInventory()) {
+            if (item == null || item.getAmount() == 0 || !item.hasItemMeta()) continue;
+            if (!(item.getItemMeta() instanceof Damageable)) continue;
+            ItemStack output = item.clone();
+            Damageable meta = (Damageable) output.getItemMeta();
+            meta.setDamage(0);
+            output.setItemMeta((ItemMeta) meta);
+            MerchantRecipe recipe = new MerchantRecipe(output, 999);
+            List<ItemStack> ins = new ArrayList<>(2);
+            ins.add(item.clone());
+            ins.add(new ItemStack(Material.DIAMOND, 10));
+            recipe.setIngredients(ins);
+            list.add(recipe);
+        }
+        merchant.setRecipes(list);
         return merchant;
     }
 
