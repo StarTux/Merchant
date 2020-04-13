@@ -85,15 +85,22 @@ public final class Merchants implements Runnable {
         List<MerchantRecipe> list = new ArrayList<>();
         for (ItemStack item : player.getInventory()) {
             if (item == null || item.getAmount() == 0 || !item.hasItemMeta()) continue;
+            final int max = item.getType().getMaxDurability();
+            if (max <= 0) continue;
             if (!(item.getItemMeta() instanceof Damageable)) continue;
             ItemStack output = item.clone();
             Damageable meta = (Damageable) output.getItemMeta();
+            if (!meta.hasDamage()) continue;
+            final int dmg = meta.getDamage();
+            if (dmg == 0) continue;
             meta.setDamage(0);
             output.setItemMeta((ItemMeta) meta);
             MerchantRecipe recipe = new MerchantRecipe(output, 999);
             List<ItemStack> ins = new ArrayList<>(2);
             ins.add(item.clone());
-            ins.add(new ItemStack(Material.DIAMOND, 10));
+            final int price = ((max - dmg - 1) * 64) / 100 + 1;
+            if (price <= 0) continue;
+            ins.add(new ItemStack(Material.DIAMOND, price));
             recipe.setIngredients(ins);
             list.add(recipe);
         }
