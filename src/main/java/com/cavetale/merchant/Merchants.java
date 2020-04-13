@@ -98,8 +98,7 @@ public final class Merchants implements Runnable {
             MerchantRecipe recipe = new MerchantRecipe(output, 999);
             List<ItemStack> ins = new ArrayList<>(2);
             ins.add(item.clone());
-            final int price = ((max - dmg - 1) * 64) / 100 + 1;
-            if (price <= 0) continue;
+            final int price = Math.max(1, (dmg * 64) / max);
             ins.add(new ItemStack(Material.DIAMOND, price));
             recipe.setIngredients(ins);
             list.add(recipe);
