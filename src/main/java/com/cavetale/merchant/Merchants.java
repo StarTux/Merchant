@@ -42,6 +42,9 @@ public final class Merchants implements Runnable {
                 Villager.Profession.SHEPHERD,
                 Villager.Profession.TOOLSMITH,
                 Villager.Profession.WEAPONSMITH);
+    static final List<Villager.Profession> REPAIRMEN = Arrays
+        .asList(Villager.Profession.TOOLSMITH,
+                Villager.Profession.WEAPONSMITH);
 
     public void load() {
         clearMobs();
@@ -112,8 +115,8 @@ public final class Merchants implements Runnable {
         mobs.clear();
     }
 
-    Villager.Profession randomProfession() {
-        return PROFESSIONS.get(plugin.random.nextInt(PROFESSIONS.size()));
+    Villager.Profession randomProfession(List<Villager.Profession> list) {
+        return list.get(plugin.random.nextInt(list.size()));
     }
 
     @Override
@@ -137,7 +140,11 @@ public final class Merchants implements Runnable {
                 if (loc == null) continue;
                 if (!loc.isChunkLoaded()) continue;
                 Villager villager = loc.getWorld().spawn(loc, Villager.class, v -> {
-                        v.setProfession(randomProfession());
+                        if (spawn.merchant.equals("Repairman")) {
+                            v.setProfession(randomProfession(REPAIRMEN));
+                        } else {
+                            v.setProfession(randomProfession(PROFESSIONS));
+                        }
                         v.setVillagerLevel(5);
                         Villager.Type[] types = Villager.Type.values();
                         Villager.Type type = types[plugin.random.nextInt(types.length)];
