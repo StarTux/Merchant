@@ -66,6 +66,10 @@ public final class EventListener implements Listener {
         if ("Repairman".equals(spawn.merchant)) {
             Merchant merchant = plugin.merchants.createRepairman(player, spawn.merchant);
             player.openMerchant(merchant, false);
+        } else if ("Maypole".equals(spawn.merchant)) {
+            String cmd = "maypole interact " + player.getName();
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), cmd);
+            return;
         } else {
             player.openMerchant(plugin.merchants.createMerchant(spawn.merchant), false);
         }

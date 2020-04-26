@@ -42,9 +42,6 @@ public final class Merchants implements Runnable {
                 Villager.Profession.SHEPHERD,
                 Villager.Profession.TOOLSMITH,
                 Villager.Profession.WEAPONSMITH);
-    static final List<Villager.Profession> REPAIRMEN = Arrays
-        .asList(Villager.Profession.TOOLSMITH,
-                Villager.Profession.WEAPONSMITH);
 
     public void load() {
         clearMobs();
@@ -141,14 +138,20 @@ public final class Merchants implements Runnable {
                 if (!loc.isChunkLoaded()) continue;
                 Villager villager = loc.getWorld().spawn(loc, Villager.class, v -> {
                         if (spawn.merchant.equals("Repairman")) {
-                            v.setProfession(randomProfession(REPAIRMEN));
+                            v.setProfession(Villager.Profession.WEAPONSMITH);
+                        } else if (spawn.merchant.equals("Maypole")) {
+                            v.setProfession(Villager.Profession.LIBRARIAN);
                         } else {
                             v.setProfession(randomProfession(PROFESSIONS));
                         }
                         v.setVillagerLevel(5);
-                        Villager.Type[] types = Villager.Type.values();
-                        Villager.Type type = types[plugin.random.nextInt(types.length)];
-                        v.setVillagerType(type);
+                        if (spawn.merchant.equals("Maypole")) {
+                            v.setVillagerType(Villager.Type.PLAINS);
+                        } else {
+                            Villager.Type[] types = Villager.Type.values();
+                            Villager.Type type = types[plugin.random.nextInt(types.length)];
+                            v.setVillagerType(type);
+                        }
                         v.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0);
                         v.setRecipes(createMerchantRecipes(spawn.merchant));
                         v.setPersistent(false);
