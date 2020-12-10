@@ -1,11 +1,13 @@
 package com.cavetale.merchant;
 
+import com.cavetale.mytems.Mytems;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -52,10 +54,27 @@ public final class Merchants implements Runnable {
         plugin.json.save(PATH, recipes, true);
     }
 
+    /**
+     * If the ItemStack is a Mytem which asks for auto fixing, return
+     * the newly created Mytem. If not, return the input.
+     */
+    public static ItemStack ifMytems(@Nullable ItemStack in) {
+        if (in == null) return null;
+        Mytems mytems = Mytems.forItem(in);
+        if (mytems == null) return in;
+        if (!mytems.getMytem().shouldAutoFix()) return in;
+        ItemStack res = mytems.getMytem().getItem();
+        res.setAmount(in.getAmount());
+        return res;
+    }
+
     public MerchantRecipe createMerchantRecipe(Recipe recipe) {
         ItemStack a = Items.deserialize(recipe.inA);
         ItemStack b = Items.deserialize(recipe.inB);
         ItemStack c = Items.deserialize(recipe.out);
+        a = ifMytems(a);
+        b = ifMytems(b);
+        c = ifMytems(c);
         List<ItemStack> ins = new ArrayList<>(2);
         ins.add(a);
         if (b != null) ins.add(b);
