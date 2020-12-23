@@ -4,8 +4,10 @@ package com.cavetale.merchant;
  * JSONable.
  */
 public final class Recipe {
-    String merchant;
-    String inA;
-    String inB;
-    String out;
+    protected long id = -1;
+    protected String merchant;
+    protected String inA;
+    protected String inB;
+    protected String out;
+    protected int maxUses = -1;
 }

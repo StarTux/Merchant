@@ -70,6 +70,7 @@ public final class Items {
             + (recipe.inB != null
                ? " + " + toString(deserialize(recipe.inB))
                : "")
-            + " => " + toString(deserialize(recipe.out));
+            + " => " + toString(deserialize(recipe.out))
+            + " max=" + recipe.maxUses;
     }
 }

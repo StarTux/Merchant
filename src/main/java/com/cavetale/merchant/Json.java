@@ -8,22 +8,19 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.function.Supplier;
-import org.bukkit.plugin.java.JavaPlugin;
-import lombok.RequiredArgsConstructor;
 
-@RequiredArgsConstructor
 public final class Json {
-    private final JavaPlugin plugin;
-    private final Gson gson = new Gson();
-    private final Gson prettyGson = new GsonBuilder().setPrettyPrinting().create();
+    private static final Gson GSON = new Gson();
+    private static final Gson PRETTY_GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    public <T> T load(final String fn, final Class<T> clazz, final Supplier<T> dfl) {
-        File file = new File(plugin.getDataFolder(), fn);
+    private Json() { }
+
+    public static <T> T load(final File file, final Class<T> clazz, final Supplier<T> dfl) {
         if (!file.exists()) {
             return dfl.get();
         }
         try (FileReader fr = new FileReader(file)) {
-            return gson.fromJson(fr, clazz);
+            return GSON.fromJson(fr, clazz);
         } catch (FileNotFoundException fnfr) {
             return dfl.get();
         } catch (IOException ioe) {
@@ -31,16 +28,13 @@ public final class Json {
         }
     }
 
-    public <T> T load(final String fn, final Class<T> clazz) {
-        return load(fn, clazz, () -> null);
+    public static <T> T load(final File file, final Class<T> clazz) {
+        return load(file, clazz, () -> null);
     }
 
-    public void save(final String fn, final Object obj, final boolean pretty) {
-        File dir = plugin.getDataFolder();
-        dir.mkdirs();
-        File file = new File(dir, fn);
+    public static void save(final File file, final Object obj, final boolean pretty) {
         try (FileWriter fw = new FileWriter(file)) {
-            Gson gs = pretty ? prettyGson : gson;
+            Gson gs = pretty ? PRETTY_GSON : GSON;
             gs.toJson(obj, fw);
         } catch (IOException ioe) {
             throw new IllegalStateException("Saving " + file, ioe);

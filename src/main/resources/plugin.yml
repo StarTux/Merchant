@@ -14,9 +14,9 @@ commands:
     permission: merchant.merchant
     usage: |-
       -- Recipes
-      /merchant create <name>
+      /merchant create <name> [maxUses]
       /merchant list
-      /merchant edit <num>
+      /merchant edit <num> [maxUses]
       /merchant delete <num>
       /merchant open <name> [player]
       -- Spawns

@@ -1,14 +1,17 @@
 package com.cavetale.merchant;
 
 import com.cavetale.mytems.Mytems;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
@@ -16,8 +19,10 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Merchant;
+import org.bukkit.inventory.MerchantInventory;
 import org.bukkit.inventory.MerchantRecipe;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -27,6 +32,7 @@ public final class Merchants implements Runnable {
     final MerchantPlugin plugin;
     Recipes recipes;
     final Map<Spawn, Mob> mobs = new HashMap<>();
+    private final Map<UUID, List<Recipe>> openMerchants = new HashMap<>();
     static final String PATH = "recipes.json";
     static final String META = "merchant:name";
     long ticks = 0;
@@ -47,11 +53,23 @@ public final class Merchants implements Runnable {
 
     public void load() {
         clearMobs();
-        recipes = plugin.json.load(PATH, Recipes.class, Recipes::new);
+        File file = new File(plugin.getDataFolder(), PATH);
+        recipes = Json.load(file, Recipes.class, Recipes::new);
+        if (recipes.fix()) save();
+    }
+
+    public void unload() {
+        clearMobs();
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (!openMerchants.containsKey(player.getUniqueId())) continue;
+            player.closeInventory();
+        }
+        openMerchants.clear();
     }
 
     public void save() {
-        plugin.json.save(PATH, recipes, true);
+        File file = new File(plugin.getDataFolder(), PATH);
+        Json.save(file, recipes, true);
     }
 
     /**
@@ -68,7 +86,7 @@ public final class Merchants implements Runnable {
         return res;
     }
 
-    public MerchantRecipe createMerchantRecipe(Recipe recipe) {
+    public MerchantRecipe createMerchantRecipe(Player player, Recipe recipe) {
         ItemStack a = Items.deserialize(recipe.inA);
         ItemStack b = Items.deserialize(recipe.inB);
         ItemStack c = Items.deserialize(recipe.out);
@@ -78,25 +96,19 @@ public final class Merchants implements Runnable {
         List<ItemStack> ins = new ArrayList<>(2);
         ins.add(a);
         if (b != null) ins.add(b);
-        MerchantRecipe result = new MerchantRecipe(c, 999);
+        int maxUses;
+        int uses;
+        if (recipe.maxUses >= 0) {
+            maxUses = recipe.maxUses;
+            uses = plugin.users.getRecipeUses(player.getUniqueId(), recipe.id);
+        } else {
+            maxUses = 999;
+            uses = 0;
+        }
+        MerchantRecipe result = new MerchantRecipe(c, maxUses);
+        result.setUses(uses);
         result.setIngredients(ins);
         return result;
-    }
-
-    List<MerchantRecipe> createMerchantRecipes(String name) {
-        List<MerchantRecipe> list = new ArrayList<>();
-        for (Recipe recipe : recipes.recipes) {
-            if (!name.equals(recipe.merchant)) continue;
-            MerchantRecipe item = createMerchantRecipe(recipe);
-            list.add(item);
-        }
-        return list;
-    }
-
-    Merchant createMerchant(String name) {
-        Merchant merchant = plugin.getServer().createMerchant(name);
-        merchant.setRecipes(createMerchantRecipes(name));
-        return merchant;
     }
 
     Merchant createRepairman(Player player, String name) {
@@ -172,7 +184,6 @@ public final class Merchants implements Runnable {
                             v.setVillagerType(type);
                         }
                         v.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0);
-                        v.setRecipes(createMerchantRecipes(spawn.merchant));
                         v.setPersistent(false);
                         v.setCollidable(false);
                     });
@@ -195,5 +206,50 @@ public final class Merchants implements Runnable {
             if (mob.equals(entry.getValue())) return entry.getKey();
         }
         return null;
+    }
+
+    /**
+     * Open the named merchant and keep track of it if necessary.
+     * See onClose().
+     * @return the resulting InventoryView
+     */
+    InventoryView openMerchant(Player player, String name) {
+        Merchant merchant = plugin.getServer().createMerchant(name);
+        List<MerchantRecipe> merchantRecipeList = new ArrayList<>();
+        List<Recipe> recipeList = new ArrayList<>();
+        for (Recipe recipe : recipes.recipes) {
+            if (!name.equals(recipe.merchant)) continue;
+            MerchantRecipe merchantRecipe = createMerchantRecipe(player, recipe);
+            merchantRecipeList.add(merchantRecipe);
+            recipeList.add(recipe);
+        }
+        merchant.setRecipes(merchantRecipeList);
+        openMerchants.put(player.getUniqueId(), recipeList);
+        return player.openMerchant(merchant, true);
+    }
+
+    void onClose(Player player, MerchantInventory inventory) {
+        player.sendMessage("close");
+        List<Recipe> recipeList = openMerchants.remove(player.getUniqueId());
+        player.sendMessage("recipeList=" + recipeList);
+        if (recipeList == null) return;
+        List<MerchantRecipe> merchantRecipeList = inventory.getMerchant().getRecipes();
+        player.sendMessage("merchantRecipeList=" + merchantRecipeList);
+        if (recipeList.size() != merchantRecipeList.size()) {
+            plugin.getLogger().warning("Merchants::onClose: Sizes don't match: recipeList=" + recipeList + ", merchantRecipeList=" + merchantRecipeList);
+        }
+        int max = Math.min(recipeList.size(), merchantRecipeList.size());
+        for (int i = 0; i < max; i += 1) {
+            Recipe recipe = recipeList.get(i);
+            if (recipe.maxUses < 0) continue;
+            MerchantRecipe merchantRecipe = merchantRecipeList.get(i);
+            plugin.users.setRecipeUses(player.getUniqueId(), recipe.id, merchantRecipe.getUses());
+            plugin.users.save(player.getUniqueId());
+        }
+    }
+
+    public void addRecipe(Recipe recipe) {
+        recipes.recipes.add(recipe);
+        recipe.id = ++recipes.recipeId;
     }
 }

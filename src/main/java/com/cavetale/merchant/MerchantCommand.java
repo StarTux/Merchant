@@ -51,12 +51,21 @@ final class MerchantCommand implements TabExecutor {
     boolean onCommand(CommandSender sender, String cmd, String[] args) throws Wrong {
         switch (cmd) {
         case "create": {
-            if (args.length != 1) return false;
+            if (args.length < 1 || args.length > 2) return false;
             Player player = playerOf(sender);
             RecipeMakerMenu menu = new RecipeMakerMenu(args[0]);
+            int maxUses = -1;
+            if (args.length >= 2) {
+                try {
+                    maxUses = Integer.parseInt(args[1]);
+                } catch (NumberFormatException nfe) {
+                    sender.sendMessage("Invalid maxUses: " + args[1]);
+                }
+            }
             Inventory inventory = plugin.getServer()
                 .createInventory(menu, 9, "New Merchant Recipe");
             menu.inventory = inventory;
+            menu.maxUses = maxUses;
             player.openInventory(inventory);
             return true;
         }
@@ -65,7 +74,8 @@ final class MerchantCommand implements TabExecutor {
             for (Recipe recipe : plugin.merchants.recipes.recipes) {
                 sender.sendMessage("" + (i++) + ") "
                                    + recipe.merchant + ": "
-                                   + Items.toString(recipe));
+                                   + Items.toString(recipe)
+                                   + " max=" + recipe.maxUses);
             }
             sender.sendMessage(i + " total recipes");
             return true;
@@ -82,11 +92,19 @@ final class MerchantCommand implements TabExecutor {
             return true;
         }
         case "edit": {
-            if (args.length != 1) return false;
+            if (args.length < 1 || args.length > 2) return false;
             Player player = playerOf(sender);
             int i = intOf(args[0]);
             if (i < 0 || i >= plugin.merchants.recipes.recipes.size()) {
                 throw new Wrong("Illegal index: " + i);
+            }
+            int maxUses = -1;
+            if (args.length >= 2) {
+                try {
+                    maxUses = Integer.parseInt(args[1]);
+                } catch (NumberFormatException nfe) {
+                    sender.sendMessage("Invalid maxUses: " + args[1]);
+                }
             }
             Recipe recipe = plugin.merchants.recipes.recipes.get(i);
             RecipeMakerMenu menu = new RecipeMakerMenu(recipe.merchant);
@@ -97,6 +115,7 @@ final class MerchantCommand implements TabExecutor {
             inventory.setItem(1, Items.deserialize(recipe.inB));
             inventory.setItem(2, Items.deserialize(recipe.out));
             menu.inventory = inventory;
+            menu.maxUses = maxUses;
             player.openInventory(inventory);
             return true;
         }
@@ -111,7 +130,7 @@ final class MerchantCommand implements TabExecutor {
                 target = playerOf(sender);
             }
             String merchant = args[0];
-            target.openMerchant(plugin.merchants.createMerchant(merchant), false);
+            plugin.merchants.openMerchant(target, merchant);
             sender.sendMessage(target.getName() + " opened merchant " + merchant);
             return true;
         }
