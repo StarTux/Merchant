@@ -229,12 +229,9 @@ public final class Merchants implements Runnable {
     }
 
     void onClose(Player player, MerchantInventory inventory) {
-        player.sendMessage("close");
         List<Recipe> recipeList = openMerchants.remove(player.getUniqueId());
-        player.sendMessage("recipeList=" + recipeList);
         if (recipeList == null) return;
         List<MerchantRecipe> merchantRecipeList = inventory.getMerchant().getRecipes();
-        player.sendMessage("merchantRecipeList=" + merchantRecipeList);
         if (recipeList.size() != merchantRecipeList.size()) {
             plugin.getLogger().warning("Merchants::onClose: Sizes don't match: recipeList=" + recipeList + ", merchantRecipeList=" + merchantRecipeList);
         }
