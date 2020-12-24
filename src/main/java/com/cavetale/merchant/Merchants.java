@@ -1,6 +1,7 @@
 package com.cavetale.merchant;
 
 import com.cavetale.mytems.Mytems;
+import com.cavetale.mytems.MytemsPlugin;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -214,6 +215,7 @@ public final class Merchants implements Runnable {
      * @return the resulting InventoryView
      */
     InventoryView openMerchant(Player player, String name) {
+        MytemsPlugin.getInstance().fixPlayerInventory(player);
         Merchant merchant = plugin.getServer().createMerchant(name);
         List<MerchantRecipe> merchantRecipeList = new ArrayList<>();
         List<Recipe> recipeList = new ArrayList<>();
