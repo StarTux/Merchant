@@ -81,7 +81,6 @@ public final class Merchants implements Runnable {
         if (in == null) return null;
         Mytems mytems = Mytems.forItem(in);
         if (mytems == null) return in;
-        if (!mytems.getMytem().shouldAutoFix()) return in;
         ItemStack res = mytems.getMytem().getItem();
         res.setAmount(in.getAmount());
         return res;
