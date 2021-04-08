@@ -77,12 +77,12 @@ public final class Merchants implements Runnable {
      * If the ItemStack is a Mytem which asks for auto fixing, return
      * the newly created Mytem. If not, return the input.
      */
-    public static ItemStack ifMytems(@Nullable ItemStack in) {
+    public static ItemStack ifMytems(@Nullable ItemStack in, Player player) {
         if (in == null) return null;
         Mytems mytems = Mytems.forItem(in);
         if (mytems == null) return in;
-        ItemStack res = mytems.getMytem().getItem();
-        res.setAmount(in.getAmount());
+        String serialized = mytems.serializeItem(in);
+        ItemStack res = Mytems.deserializeItem(serialized, player);
         return res;
     }
 
@@ -90,9 +90,9 @@ public final class Merchants implements Runnable {
         ItemStack a = Items.deserialize(recipe.inA);
         ItemStack b = Items.deserialize(recipe.inB);
         ItemStack c = Items.deserialize(recipe.out);
-        a = ifMytems(a);
-        b = ifMytems(b);
-        c = ifMytems(c);
+        a = ifMytems(a, player);
+        b = ifMytems(b, player);
+        c = ifMytems(c, player);
         List<ItemStack> ins = new ArrayList<>(2);
         ins.add(a);
         if (b != null) ins.add(b);
