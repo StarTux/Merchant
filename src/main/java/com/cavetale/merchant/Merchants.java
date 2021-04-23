@@ -210,6 +210,7 @@ public final class Merchants implements Runnable {
                     plugin.getLogger().info("Failed to spawn: " + spawn.simplified());
                     continue;
                 }
+                Bukkit.getMobGoals().removeAllGoals(villager);
                 plugin.meta.set(villager, META, spawn.merchant);
                 mobs.put(spawn, villager);
                 plugin.getLogger().info("Spawned: " + spawn.simplified());
