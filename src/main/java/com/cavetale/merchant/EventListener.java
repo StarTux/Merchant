@@ -70,6 +70,9 @@ public final class EventListener implements Listener {
         if ("Repairman".equals(spawn.merchant)) {
             Merchant merchant = plugin.merchants.createRepairman(player, spawn.merchant);
             player.openMerchant(merchant, false);
+        } else if ("PlayerHead".equals(spawn.merchant)) {
+            Merchant merchant = plugin.merchants.createPlayerHeadSalesman(player, spawn.merchant);
+            player.openMerchant(merchant, false);
         } else {
             plugin.merchants.openMerchant(player, spawn.merchant);
         }

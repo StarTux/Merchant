@@ -27,6 +27,7 @@ import org.bukkit.inventory.MerchantInventory;
 import org.bukkit.inventory.MerchantRecipe;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 
 @RequiredArgsConstructor
 public final class Merchants implements Runnable {
@@ -138,6 +139,22 @@ public final class Merchants implements Runnable {
         return merchant;
     }
 
+    Merchant createPlayerHeadSalesman(Player player, String name) {
+        Merchant merchant = plugin.getServer().createMerchant(name);
+        List<MerchantRecipe> list = new ArrayList<>();
+        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta meta = (SkullMeta) head.getItemMeta();
+        meta.setPlayerProfile(player.getPlayerProfile());
+        head.setItemMeta((ItemMeta) meta);
+        MerchantRecipe recipe = new MerchantRecipe(head, 999);
+        List<ItemStack> ins = new ArrayList<>(2);
+        ins.add(Mytems.KITTY_COIN.createItemStack(player));
+        recipe.setIngredients(ins);
+        list.add(recipe);
+        merchant.setRecipes(list);
+        return merchant;
+    }
+
     void clearMobs() {
         for (Mob mob : mobs.values()) mob.remove();
         mobs.clear();
@@ -172,6 +189,8 @@ public final class Merchants implements Runnable {
                             v.setProfession(Villager.Profession.WEAPONSMITH);
                         } else if (spawn.merchant.equals("Maypole")) {
                             v.setProfession(Villager.Profession.LIBRARIAN);
+                        } else if (spawn.merchant.equals("PlayerHead")) {
+                            v.setProfession(Villager.Profession.CARTOGRAPHER);
                         } else {
                             v.setProfession(randomProfession(PROFESSIONS));
                         }
