@@ -1,8 +1,11 @@
 package com.cavetale.merchant;
 
+import lombok.Data;
+
 /**
  * JSONable.
  */
+@Data
 public final class Recipe {
     protected long id = -1;
     protected String merchant;

@@ -5,25 +5,21 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public final class MerchantPlugin extends JavaPlugin {
     final MerchantCommand command = new MerchantCommand(this);
-    final EventListener listener = new EventListener(this);
     final Merchants merchants = new Merchants(this);
-    final Metadata meta = new Metadata(this);
     final Random random = new Random();
     final Users users = new Users(this);
 
     @Override
     public void onEnable() {
         getDataFolder().mkdirs();
-        merchants.load();
+        merchants.enable();
         users.enable();
-        getServer().getPluginManager().registerEvents(listener, this);
-        getCommand("merchant").setExecutor(command);
-        getServer().getScheduler().runTaskTimer(this, merchants, 1, 1);
+        command.enable();
     }
 
     @Override
     public void onDisable() {
-        merchants.unload();
+        merchants.disable();
         users.clear();
     }
 }

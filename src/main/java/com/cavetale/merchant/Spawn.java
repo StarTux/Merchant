@@ -1,5 +1,6 @@
 package com.cavetale.merchant;
 
+import lombok.Data;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -7,14 +8,15 @@ import org.bukkit.World;
 /**
  * JSONable.
  */
+@Data
 public final class Spawn {
-    String world;
-    double x;
-    double y;
-    double z;
-    float pitch;
-    float yaw;
-    String merchant;
+    protected String world;
+    protected double x;
+    protected double y;
+    protected double z;
+    protected float pitch;
+    protected float yaw;
+    protected String merchant;
 
     public void load(Location loc) {
         world = loc.getWorld().getName();

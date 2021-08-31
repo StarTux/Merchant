@@ -2,16 +2,20 @@ package com.cavetale.merchant;
 
 import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsPlugin;
+import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
+import io.papermc.paper.event.entity.EntityMoveEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -20,6 +24,13 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.world.ChunkLoadEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Merchant;
@@ -30,14 +41,15 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
 @RequiredArgsConstructor
-public final class Merchants implements Runnable {
+public final class Merchants implements Listener {
     final MerchantPlugin plugin;
     Recipes recipes;
-    final Map<Spawn, Mob> mobs = new HashMap<>();
+    private final Map<Spawn, Mob> spawnMobMap = new IdentityHashMap<>();
+    private final Map<Integer, Spawn> idSpawnMap = new HashMap<>();
     private final Map<UUID, List<Recipe>> openMerchants = new HashMap<>();
     static final String PATH = "recipes.json";
-    static final String META = "merchant:name";
-    long ticks = 0;
+    private boolean spawning;
+
     static final List<Villager.Profession> PROFESSIONS = Arrays
         .asList(Villager.Profession.ARMORER,
                 Villager.Profession.BUTCHER,
@@ -53,14 +65,24 @@ public final class Merchants implements Runnable {
                 Villager.Profession.TOOLSMITH,
                 Villager.Profession.WEAPONSMITH);
 
-    public void load() {
+    protected void enable() {
+        Bukkit.getPluginManager().registerEvents(this, plugin);
+        load();
+        spawnAll();
+    }
+
+    protected void disable() {
+        unload();
+    }
+
+    protected void load() {
         clearMobs();
         File file = new File(plugin.getDataFolder(), PATH);
         recipes = Json.load(file, Recipes.class, Recipes::new);
         if (recipes.fix()) save();
     }
 
-    public void unload() {
+    protected void unload() {
         clearMobs();
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (!openMerchants.containsKey(player.getUniqueId())) continue;
@@ -69,7 +91,7 @@ public final class Merchants implements Runnable {
         openMerchants.clear();
     }
 
-    public void save() {
+    protected void save() {
         File file = new File(plugin.getDataFolder(), PATH);
         Json.save(file, recipes, true);
     }
@@ -112,8 +134,8 @@ public final class Merchants implements Runnable {
         return result;
     }
 
-    Merchant createRepairman(Player player, String name) {
-        Merchant merchant = plugin.getServer().createMerchant(name);
+    protected Merchant createRepairman(Player player, String name) {
+        Merchant merchant = plugin.getServer().createMerchant(Component.text(name));
         List<MerchantRecipe> list = new ArrayList<>();
         for (ItemStack item : player.getInventory()) {
             if (item == null || item.getAmount() == 0 || !item.hasItemMeta()) continue;
@@ -139,8 +161,8 @@ public final class Merchants implements Runnable {
         return merchant;
     }
 
-    Merchant createPlayerHeadSalesman(Player player, String name) {
-        Merchant merchant = plugin.getServer().createMerchant(name);
+    protected Merchant createPlayerHeadSalesman(Player player, String name) {
+        Merchant merchant = plugin.getServer().createMerchant(Component.text(name));
         List<MerchantRecipe> list = new ArrayList<>();
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) head.getItemMeta();
@@ -155,77 +177,61 @@ public final class Merchants implements Runnable {
         return merchant;
     }
 
-    void clearMobs() {
-        for (Mob mob : mobs.values()) mob.remove();
-        mobs.clear();
+    protected void clearMobs() {
+        for (Mob mob : spawnMobMap.values()) mob.remove();
+        spawnMobMap.clear();
+        idSpawnMap.clear();
     }
 
-    Villager.Profession randomProfession(List<Villager.Profession> list) {
+    protected Villager.Profession randomProfession(List<Villager.Profession> list) {
         return list.get(plugin.random.nextInt(list.size()));
     }
 
-    @Override
-    public void run() {
-        for (Iterator<Map.Entry<Spawn, Mob>> iter = mobs.entrySet().iterator(); iter.hasNext();) {
-            Map.Entry<Spawn, Mob> it = iter.next();
-            Spawn spawn = it.getKey();
-            Mob mob = it.getValue();
-            if (!mob.isValid()) {
-                iter.remove();
-                continue;
-            }
-            if (!spawn.isNearby(mob.getLocation(), 1.0)) {
-                mob.teleport(spawn.toLocation());
-            }
+    protected void spawnAll() {
+        for (Spawn spawn : recipes.spawns) {
+            tryToSpawn(spawn);
         }
-        if (ticks % 20 == 0) {
-            for (Spawn spawn : recipes.spawns) {
-                if (mobs.containsKey(spawn)) continue;
-                Location loc = spawn.toLocation();
-                if (loc == null) continue;
-                if (!loc.isChunkLoaded()) continue;
-                Villager villager = loc.getWorld().spawn(loc, Villager.class, v -> {
-                        if (spawn.merchant.equals("Repairman")) {
-                            v.setProfession(Villager.Profession.WEAPONSMITH);
-                        } else if (spawn.merchant.equals("Maypole")) {
-                            v.setProfession(Villager.Profession.LIBRARIAN);
-                        } else if (spawn.merchant.equals("PlayerHead")) {
-                            v.setProfession(Villager.Profession.CARTOGRAPHER);
-                        } else {
-                            v.setProfession(randomProfession(PROFESSIONS));
-                        }
-                        v.setVillagerLevel(5);
-                        if (spawn.merchant.equals("Maypole")) {
-                            v.setVillagerType(Villager.Type.PLAINS);
-                        } else {
-                            Villager.Type[] types = Villager.Type.values();
-                            Villager.Type type = types[plugin.random.nextInt(types.length)];
-                            v.setVillagerType(type);
-                        }
-                        v.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0);
-                        v.setPersistent(false);
-                        v.setCollidable(false);
-                    });
-                if (villager == null) {
-                    plugin.getLogger().info("Failed to spawn: " + spawn.simplified());
-                    continue;
-                }
-                Bukkit.getMobGoals().removeAllGoals(villager);
-                plugin.meta.set(villager, META, spawn.merchant);
-                mobs.put(spawn, villager);
-                plugin.getLogger().info("Spawned: " + spawn.simplified());
-            }
-        }
-        ticks += 1;
     }
 
-    Spawn spawnOf(Entity entity) {
-        if (!(entity instanceof Mob)) return null;
-        Mob mob = (Mob) entity;
-        for (Map.Entry<Spawn, Mob> entry : mobs.entrySet()) {
-            if (mob.equals(entry.getValue())) return entry.getKey();
+    protected void tryToSpawn(Spawn spawn) {
+        if (spawnMobMap.containsKey(spawn)) return;
+        Location loc = spawn.toLocation();
+        if (loc == null) return;
+        if (!loc.isChunkLoaded()) return;
+        Villager villager = loc.getWorld().spawn(loc, Villager.class, v -> {
+                v.setPersistent(false);
+                if (spawn.merchant.equals("Repairman")) {
+                    v.setProfession(Villager.Profession.WEAPONSMITH);
+                } else if (spawn.merchant.equals("Maypole")) {
+                    v.setProfession(Villager.Profession.LIBRARIAN);
+                } else if (spawn.merchant.equals("PlayerHead")) {
+                    v.setProfession(Villager.Profession.CARTOGRAPHER);
+                } else {
+                    v.setProfession(randomProfession(PROFESSIONS));
+                }
+                v.setVillagerLevel(5);
+                if (spawn.merchant.equals("Maypole")) {
+                    v.setVillagerType(Villager.Type.PLAINS);
+                } else {
+                    Villager.Type[] types = Villager.Type.values();
+                    Villager.Type type = types[plugin.random.nextInt(types.length)];
+                    v.setVillagerType(type);
+                }
+                v.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0);
+                v.setCollidable(false);
+            });
+        if (villager == null) {
+            plugin.getLogger().info("Failed to spawn: " + spawn.simplified());
+            return;
         }
-        return null;
+        Bukkit.getMobGoals().removeAllGoals(villager);
+        spawnMobMap.put(spawn, villager);
+        idSpawnMap.put(villager.getEntityId(), spawn);
+        plugin.getLogger().info("Spawned: " + spawn.simplified());
+    }
+
+    protected Spawn spawnOf(Entity entity) {
+        return idSpawnMap.get(entity.getEntityId());
     }
 
     /**
@@ -235,7 +241,7 @@ public final class Merchants implements Runnable {
      */
     InventoryView openMerchant(Player player, String name) {
         MytemsPlugin.getInstance().fixPlayerInventory(player);
-        Merchant merchant = plugin.getServer().createMerchant(name);
+        Merchant merchant = plugin.getServer().createMerchant(Component.text(name));
         List<MerchantRecipe> merchantRecipeList = new ArrayList<>();
         List<Recipe> recipeList = new ArrayList<>();
         for (Recipe recipe : recipes.recipes) {
@@ -269,5 +275,98 @@ public final class Merchants implements Runnable {
     public void addRecipe(Recipe recipe) {
         recipes.recipes.add(recipe);
         recipe.id = ++recipes.recipeId;
+    }
+
+    @EventHandler
+    void onEntityRemoveFromWorld(EntityRemoveFromWorldEvent event) {
+        int entityId = event.getEntity().getEntityId();
+        Spawn spawn = idSpawnMap.remove(entityId);
+        if (spawn == null) return;
+        spawnMobMap.remove(spawn);
+    }
+
+
+    @EventHandler
+    public void onChunkLoad(ChunkLoadEvent event) {
+        if (spawning) return;
+        spawning = true;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                spawning = false;
+                spawnAll();
+            }, 20L);
+    }
+
+    @EventHandler
+    void onEntityMove(EntityMoveEvent event) {
+        if (!(event.getEntity() instanceof Mob)) return;
+        Mob mob = (Mob) event.getEntity();
+        Spawn spawn = idSpawnMap.get(mob.getEntityId());
+        if (spawn == null) return;
+        if (!spawn.isNearby(mob.getLocation(), 1.0)) {
+            mob.teleport(spawn.toLocation());
+        }
+    }
+
+    @EventHandler
+    void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
+        Entity entity = event.getRightClicked();
+        Spawn spawn = spawnOf(entity);
+        if (spawn == null) return;
+        event.setCancelled(true);
+        Player player = event.getPlayer();
+        if ("Repairman".equals(spawn.merchant)) {
+            Merchant merchant = createRepairman(player, spawn.merchant);
+            player.openMerchant(merchant, false);
+        } else if ("PlayerHead".equals(spawn.merchant)) {
+            Merchant merchant = createPlayerHeadSalesman(player, spawn.merchant);
+            player.openMerchant(merchant, false);
+        } else {
+            openMerchant(player, spawn.merchant);
+        }
+        plugin.getLogger().info(player.getName() + " opened " + spawn.merchant);
+    }
+
+    @EventHandler
+    void onEntityDamage(EntityDamageEvent event) {
+        Entity entity = event.getEntity();
+        Spawn spawn = spawnOf(entity);
+        if (spawn == null) return;
+        entity.setPersistent(false);
+        event.setCancelled(true);
+    }
+
+    @EventHandler
+    void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player)) return;
+        Player player = (Player) event.getPlayer();
+        Inventory inv = event.getInventory();
+        if (inv.getHolder() instanceof RecipeMakerMenu) {
+            RecipeMakerMenu menu = (RecipeMakerMenu) inv.getHolder();
+            ItemStack a = Items.simplify(inv.getItem(0));
+            ItemStack b = Items.simplify(inv.getItem(1));
+            ItemStack c = Items.simplify(inv.getItem(2));
+            if (c == null) return;
+            if (a == null) return;
+            Recipe recipe = menu.recipe != null
+                ? menu.recipe
+                : new Recipe();
+            recipe.merchant = menu.merchant;
+            recipe.inA = Items.serialize(a);
+            recipe.inB = Items.serialize(b);
+            recipe.out = Items.serialize(c);
+            recipe.maxUses = menu.maxUses;
+            if (menu.recipe == null) {
+                addRecipe(recipe);
+                save();
+                player.sendMessage(Component.text("New recipe created: " + Items.toString(recipe),
+                                                  NamedTextColor.YELLOW));
+            } else {
+                save();
+                player.sendMessage(Component.text("Recipe edited: " + Items.toString(recipe),
+                                                  NamedTextColor.YELLOW));
+            }
+        } else if (inv instanceof MerchantInventory) {
+            onClose(player, (MerchantInventory) inv);
+        }
     }
 }
