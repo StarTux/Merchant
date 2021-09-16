@@ -1,5 +1,7 @@
 package com.cavetale.merchant;
 
+import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
+import com.cavetale.core.event.player.PluginPlayerEvent;
 import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsPlugin;
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
@@ -324,6 +326,9 @@ public final class Merchants implements Listener {
             openMerchant(player, spawn.merchant);
         }
         plugin.getLogger().info(player.getName() + " opened " + spawn.merchant);
+        PluginPlayerEvent.Name.INTERACT_NPC.ultimate(plugin, player)
+            .detail(Detail.NAME, spawn.merchant)
+            .call();
     }
 
     @EventHandler
