@@ -180,7 +180,9 @@ public final class Merchants implements Listener {
     }
 
     protected void clearMobs() {
-        for (Mob mob : spawnMobMap.values()) mob.remove();
+        for (Mob mob : new ArrayList<>(spawnMobMap.values())) {
+            mob.remove();
+        }
         spawnMobMap.clear();
         idSpawnMap.clear();
     }
