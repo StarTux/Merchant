@@ -27,6 +27,7 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
@@ -281,7 +282,7 @@ public final class Merchants implements Listener {
         recipe.id = ++recipes.recipeId;
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     void onEntityRemoveFromWorld(EntityRemoveFromWorldEvent event) {
         int entityId = event.getEntity().getEntityId();
         Spawn spawn = idSpawnMap.remove(entityId);
@@ -300,7 +301,7 @@ public final class Merchants implements Listener {
             }, 20L);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     void onEntityMove(EntityMoveEvent event) {
         if (!(event.getEntity() instanceof Mob)) return;
         Mob mob = (Mob) event.getEntity();
@@ -311,7 +312,7 @@ public final class Merchants implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         Entity entity = event.getRightClicked();
         Spawn spawn = spawnOf(entity);
@@ -333,7 +334,7 @@ public final class Merchants implements Listener {
             .call();
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     void onEntityDamage(EntityDamageEvent event) {
         Entity entity = event.getEntity();
         Spawn spawn = spawnOf(entity);
@@ -342,7 +343,7 @@ public final class Merchants implements Listener {
         event.setCancelled(true);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     void onInventoryClose(InventoryCloseEvent event) {
         if (!(event.getPlayer() instanceof Player)) return;
         Player player = (Player) event.getPlayer();
