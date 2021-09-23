@@ -166,18 +166,15 @@ public final class Merchants implements Listener {
     }
 
     protected Merchant createPlayerHeadSalesman(Player player, Component displayName) {
-        Merchant merchant = plugin.getServer().createMerchant(displayName);
-        List<MerchantRecipe> list = new ArrayList<>();
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-        SkullMeta meta = (SkullMeta) head.getItemMeta();
-        meta.setPlayerProfile(player.getPlayerProfile());
-        head.setItemMeta((ItemMeta) meta);
+        head.editMeta(meta -> ((SkullMeta) meta).setPlayerProfile(player.getPlayerProfile()));
         MerchantRecipe recipe = new MerchantRecipe(head, 999);
-        List<ItemStack> ins = new ArrayList<>(2);
-        ins.add(Mytems.KITTY_COIN.createItemStack(player));
-        recipe.setIngredients(ins);
-        list.add(recipe);
-        merchant.setRecipes(list);
+        recipe.setIngredients(List.of(Mytems.KITTY_COIN.createItemStack(player)));
+        MerchantRecipe recipe2 = new MerchantRecipe(head, 999);
+        recipe2.setIngredients(List.of(new ItemStack(Material.SKELETON_SKULL),
+                                       Mytems.RUBY.createItemStack(player)));
+        Merchant merchant = plugin.getServer().createMerchant(displayName);
+        merchant.setRecipes(List.of(recipe, recipe2));
         return merchant;
     }
 
