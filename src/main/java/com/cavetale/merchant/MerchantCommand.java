@@ -1,7 +1,10 @@
 package com.cavetale.merchant;
 
+import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
+import com.cavetale.core.util.Json;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -11,7 +14,9 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Villager;
 import org.bukkit.inventory.Inventory;
 
 @RequiredArgsConstructor
@@ -55,6 +60,16 @@ final class MerchantCommand implements TabExecutor {
         spawnNode.addChild("delete").arguments("<num>")
             .description("Delete spawn")
             .senderCaller(this::spawnDelete);
+        spawnNode.addChild("displayname").arguments("<index> <json...>")
+            .description("Set display name")
+            .senderCaller(this::spawnDisplayName);
+        spawnNode.addChild("setvillager").arguments("<index> <profession> <type> <level>")
+            .description("Set villager type")
+            .completers(CommandArgCompleter.integer(i -> i > 0),
+                        CommandArgCompleter.enumLowerList(Villager.Profession.class),
+                        CommandArgCompleter.enumLowerList(Villager.Type.class),
+                        CommandArgCompleter.integer(i -> i >= 1 && i <= 5))
+            .senderCaller(this::spawnSetVillager);
         // finis
         plugin.getCommand("merchant").setExecutor(this);
     }
@@ -152,7 +167,7 @@ final class MerchantCommand implements TabExecutor {
             target = playerOf(sender);
         }
         String merchant = args[0];
-        plugin.merchants.openMerchant(target, merchant);
+        plugin.merchants.openMerchant(target, merchant, Component.text(merchant));
         sender.sendMessage(Component.text(target.getName() + " opened merchant " + merchant, NamedTextColor.YELLOW));
         return true;
     }
@@ -207,6 +222,46 @@ final class MerchantCommand implements TabExecutor {
         return true;
     }
 
+    protected boolean spawnDisplayName(CommandSender sender, String[] args) {
+        if (args.length < 2) return false;
+        Spawn spawn = spawnOf(args[0]);
+        String json = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+        Component displayName = Json.deserializeComponent(json);
+        if (displayName == null || Component.empty().equals(displayName)) {
+            throw new CommandWarn("Invalid JSON. See console!");
+        }
+        spawn.setDisplayName(displayName);
+        plugin.merchants.save();
+        plugin.merchants.clearMobs();
+        plugin.merchants.spawnAll();
+        sender.sendMessage(Component.text().content("Display name set to ").color(NamedTextColor.YELLOW)
+                           .append(spawn.getDisplayName()));
+        return true;
+    }
+
+    protected boolean spawnSetVillager(CommandSender sender, String[] args) {
+        if (args.length != 4) return false;
+        Spawn spawn = spawnOf(args[0]);
+        Spawn.Appearance appearance = new Spawn.Appearance();
+        appearance.entityType = EntityType.VILLAGER;
+        try {
+            appearance.villagerProfession = Villager.Profession.valueOf(args[1].toUpperCase());
+            appearance.villagerType = Villager.Type.valueOf(args[2].toUpperCase());
+        } catch (IllegalArgumentException iae) {
+            throw new CommandWarn("Invalid profession or type: " + args[1] + ", " + args[2]);
+        }
+        appearance.villagerLevel = intOf(args[3]);
+        if (appearance.villagerLevel < 1 || appearance.villagerLevel > 5) {
+            throw new CommandWarn("Illegal villager level: " + appearance.villagerLevel);
+        }
+        spawn.appearance = appearance;
+        plugin.merchants.save();
+        plugin.merchants.clearMobs();
+        plugin.merchants.spawnAll();
+        sender.sendMessage(Component.text("Villager appearance updated", NamedTextColor.YELLOW));
+        return true;
+    }
+
     private List<String> complete(final String arg, final Stream<String> opt) {
         return opt.filter(o -> o.startsWith(arg))
             .collect(Collectors.toList());
@@ -225,5 +280,13 @@ final class MerchantCommand implements TabExecutor {
         } catch (NumberFormatException nfe) {
             throw new CommandWarn("Not a number: " + arg);
         }
+    }
+
+    private Spawn spawnOf(final String arg) throws CommandWarn {
+        int index = intOf(arg);
+        if (index < 0 || index >= plugin.merchants.recipes.spawns.size()) {
+            throw new CommandWarn("Illegal spawn index: " + index);
+        }
+        return plugin.merchants.recipes.spawns.get(index);
     }
 }

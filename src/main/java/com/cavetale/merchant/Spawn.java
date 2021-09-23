@@ -1,9 +1,13 @@
 package com.cavetale.merchant;
 
+import com.cavetale.core.util.Json;
 import lombok.Data;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Villager;
 
 /**
  * JSONable.
@@ -17,6 +21,16 @@ public final class Spawn {
     protected float pitch;
     protected float yaw;
     protected String merchant;
+    protected String displayNameJson; // Component
+    protected Appearance appearance;
+    protected transient Component displayNameComponent; // Cache
+
+    protected static final class Appearance {
+        protected EntityType entityType;
+        protected Villager.Profession villagerProfession;
+        protected Villager.Type villagerType;
+        protected int villagerLevel;
+    }
 
     public void load(Location loc) {
         world = loc.getWorld().getName();
@@ -48,5 +62,19 @@ public final class Spawn {
         if (Math.abs(loc.getY() - y) > max) return false;
         if (Math.abs(loc.getZ() - z) > max) return false;
         return true;
+    }
+
+    public void setDisplayName(Component component) {
+        displayNameComponent = component;
+        displayNameJson = Json.serializeComponent(component);
+    }
+
+    public Component getDisplayName() {
+        if (displayNameComponent == null) {
+            displayNameComponent = displayNameJson != null
+                ? Json.deserializeComponent(displayNameJson)
+                : Component.empty();
+        }
+        return displayNameComponent;
     }
 }

@@ -2,6 +2,7 @@ package com.cavetale.merchant;
 
 import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
 import com.cavetale.core.event.player.PluginPlayerEvent;
+import com.cavetale.core.util.Json;
 import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsPlugin;
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
@@ -137,8 +138,8 @@ public final class Merchants implements Listener {
         return result;
     }
 
-    protected Merchant createRepairman(Player player, String name) {
-        Merchant merchant = plugin.getServer().createMerchant(Component.text(name));
+    protected Merchant createRepairman(Player player, Component displayName) {
+        Merchant merchant = plugin.getServer().createMerchant(displayName);
         List<MerchantRecipe> list = new ArrayList<>();
         for (ItemStack item : player.getInventory()) {
             if (item == null || item.getAmount() == 0 || !item.hasItemMeta()) continue;
@@ -164,8 +165,8 @@ public final class Merchants implements Listener {
         return merchant;
     }
 
-    protected Merchant createPlayerHeadSalesman(Player player, String name) {
-        Merchant merchant = plugin.getServer().createMerchant(Component.text(name));
+    protected Merchant createPlayerHeadSalesman(Player player, Component displayName) {
+        Merchant merchant = plugin.getServer().createMerchant(displayName);
         List<MerchantRecipe> list = new ArrayList<>();
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
         SkullMeta meta = (SkullMeta) head.getItemMeta();
@@ -205,25 +206,41 @@ public final class Merchants implements Listener {
         if (!loc.isChunkLoaded()) return;
         Villager villager = loc.getWorld().spawn(loc, Villager.class, v -> {
                 v.setPersistent(false);
-                if (spawn.merchant.equals("Repairman")) {
-                    v.setProfession(Villager.Profession.WEAPONSMITH);
-                } else if (spawn.merchant.equals("Maypole")) {
-                    v.setProfession(Villager.Profession.LIBRARIAN);
-                } else if (spawn.merchant.equals("PlayerHead")) {
-                    v.setProfession(Villager.Profession.CARTOGRAPHER);
-                } else {
-                    v.setProfession(randomProfession(PROFESSIONS));
-                }
-                v.setVillagerLevel(5);
-                if (spawn.merchant.equals("Maypole")) {
-                    v.setVillagerType(Villager.Type.PLAINS);
-                } else {
-                    Villager.Type[] types = Villager.Type.values();
-                    Villager.Type type = types[plugin.random.nextInt(types.length)];
-                    v.setVillagerType(type);
-                }
                 v.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0);
                 v.setCollidable(false);
+                if (spawn.appearance != null) {
+                    if (spawn.appearance.villagerProfession != null) {
+                        v.setProfession(spawn.appearance.villagerProfession);
+                    }
+                    if (spawn.appearance.villagerType != null) {
+                        v.setVillagerType(spawn.appearance.villagerType);
+                    }
+                    if (spawn.appearance.villagerLevel >= 1 && spawn.appearance.villagerLevel <= 5) {
+                        v.setVillagerLevel(spawn.appearance.villagerLevel);
+                    }
+                } else {
+                    if (spawn.merchant.equals("Repairman")) {
+                        v.setProfession(Villager.Profession.WEAPONSMITH);
+                    } else if (spawn.merchant.equals("Maypole")) {
+                        v.setProfession(Villager.Profession.LIBRARIAN);
+                    } else if (spawn.merchant.equals("PlayerHead")) {
+                        v.setProfession(Villager.Profession.CARTOGRAPHER);
+                    } else {
+                        v.setProfession(randomProfession(PROFESSIONS));
+                    }
+                    v.setVillagerLevel(5);
+                    if (spawn.merchant.equals("Maypole")) {
+                        v.setVillagerType(Villager.Type.PLAINS);
+                    } else {
+                        Villager.Type[] types = Villager.Type.values();
+                        Villager.Type type = types[plugin.random.nextInt(types.length)];
+                        v.setVillagerType(type);
+                    }
+                }
+                Component displayName = spawn.getDisplayName();
+                if (displayName != null && !Component.empty().equals(displayName)) {
+                    v.customName(displayName);
+                }
             });
         if (villager == null) {
             plugin.getLogger().info("Failed to spawn: " + spawn.simplified());
@@ -239,14 +256,26 @@ public final class Merchants implements Listener {
         return idSpawnMap.get(entity.getEntityId());
     }
 
+    protected InventoryView openMerchant(Player player, Spawn spawn) {
+        Component displayName = spawn.getDisplayName();
+        return displayName != null && !Component.empty().equals(displayName)
+            ? openMerchant(player, spawn.merchant, displayName)
+            : openMerchant(player, spawn.merchant, Component.text(spawn.merchant));
+    }
+
     /**
      * Open the named merchant and keep track of it if necessary.
      * See onClose().
      * @return the resulting InventoryView
      */
-    InventoryView openMerchant(Player player, String name) {
+    protected InventoryView openMerchant(Player player, String name, Component displayName) {
         MytemsPlugin.getInstance().fixPlayerInventory(player);
-        Merchant merchant = plugin.getServer().createMerchant(Component.text(name));
+        if ("Repairman".equals(name)) {
+            return player.openMerchant(createRepairman(player, displayName), true);
+        } else if ("PlayerHead".equals(name)) {
+            return player.openMerchant(createPlayerHeadSalesman(player, displayName), true);
+        }
+        Merchant merchant = plugin.getServer().createMerchant(displayName);
         List<MerchantRecipe> merchantRecipeList = new ArrayList<>();
         List<Recipe> recipeList = new ArrayList<>();
         for (Recipe recipe : recipes.recipes) {
@@ -319,15 +348,7 @@ public final class Merchants implements Listener {
         if (spawn == null) return;
         event.setCancelled(true);
         Player player = event.getPlayer();
-        if ("Repairman".equals(spawn.merchant)) {
-            Merchant merchant = createRepairman(player, spawn.merchant);
-            player.openMerchant(merchant, false);
-        } else if ("PlayerHead".equals(spawn.merchant)) {
-            Merchant merchant = createPlayerHeadSalesman(player, spawn.merchant);
-            player.openMerchant(merchant, false);
-        } else {
-            openMerchant(player, spawn.merchant);
-        }
+        openMerchant(player, spawn);
         plugin.getLogger().info(player.getName() + " opened " + spawn.merchant);
         PluginPlayerEvent.Name.INTERACT_NPC.ultimate(plugin, player)
             .detail(Detail.NAME, spawn.merchant)
