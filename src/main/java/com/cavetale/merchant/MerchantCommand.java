@@ -4,6 +4,10 @@ import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.util.Json;
+import com.cavetale.merchant.save.MerchantFile;
+import com.cavetale.merchant.save.Recipe;
+import com.cavetale.merchant.save.Spawn;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,43 +33,58 @@ final class MerchantCommand implements TabExecutor {
         rootNode.addChild("reload").denyTabCompletion()
             .description("Reload configuration")
             .senderCaller(this::reload);
-        rootNode.addChild("save").denyTabCompletion()
-            .description("Save to disk")
-            .senderCaller(this::save);
         // recipe
+        CommandArgCompleter merchantFileNameCompleter = CommandArgCompleter
+            .supplyList(() -> new ArrayList<>(plugin.merchants.merchantFileMap.keySet()));
         CommandNode recipeNode = rootNode.addChild("recipe").description("Recipes");
-        recipeNode.addChild("create").arguments("<name> [maxUses]")
+        recipeNode.addChild("create").arguments("<merchant> [maxUses]")
+            .completers(merchantFileNameCompleter,
+                        CommandArgCompleter.integer(i -> i >= -1))
             .description("Create merchant")
             .playerCaller(this::recipeCreate);
-        recipeNode.addChild("list").denyTabCompletion()
+        recipeNode.addChild("list").arguments("[merchant]")
+            .completers(merchantFileNameCompleter)
             .description("List merchants")
             .senderCaller(this::recipeList);
-        recipeNode.addChild("edit").arguments("<num> [maxUses]")
+        recipeNode.addChild("edit").arguments("<merchant> <num> [maxUses]")
+            .completers(merchantFileNameCompleter,
+                        CommandArgCompleter.integer(i -> i >= 0),
+                        CommandArgCompleter.integer(i -> i >= -1))
             .description("Edit merchant")
             .playerCaller(this::recipeEdit);
-        recipeNode.addChild("delete").arguments("<num>")
-            .description("Delete merchant")
+        recipeNode.addChild("delete").arguments("<merchant> <num>")
+            .completers(merchantFileNameCompleter,
+                        CommandArgCompleter.integer(i -> i >= 0))
+            .description("Delete recipe")
             .senderCaller(this::recipeDelete);
-        recipeNode.addChild("open").arguments("<name> [player]")
+        recipeNode.addChild("open").arguments("<merchant> [player]")
+            .completers(merchantFileNameCompleter,
+                        CommandArgCompleter.NULL)
             .description("Open recipe")
             .senderCaller(this::recipeOpen);
         // spawn
+        CommandArgCompleter spawnNameCompleter = CommandArgCompleter
+            .supplyList(() -> new ArrayList<>(plugin.merchants.spawnMap.keySet()));
         CommandNode spawnNode = rootNode.addChild("spawn").description("Spawns");
-        spawnNode.addChild("create").arguments("<merchant>")
+        spawnNode.addChild("create").arguments("<merchant> [name]")
+            .completers(merchantFileNameCompleter,
+                        CommandArgCompleter.EMPTY)
             .description("Create spawn")
             .playerCaller(this::spawnCreate);
         spawnNode.addChild("list").denyTabCompletion()
             .description("List spawns")
             .senderCaller(this::spawnList);
-        spawnNode.addChild("delete").arguments("<num>")
+        spawnNode.addChild("delete").arguments("<name>")
+            .completers(spawnNameCompleter)
             .description("Delete spawn")
             .senderCaller(this::spawnDelete);
-        spawnNode.addChild("displayname").arguments("<index> <json...>")
+        spawnNode.addChild("displayname").arguments("<name> <json...>")
+            .completers(spawnNameCompleter)
             .description("Set display name")
             .senderCaller(this::spawnDisplayName);
-        spawnNode.addChild("setvillager").arguments("<index> <profession> <type> <level>")
+        spawnNode.addChild("setvillager").arguments("<name> <profession> <type> <level>")
             .description("Set villager type")
-            .completers(CommandArgCompleter.integer(i -> i > 0),
+            .completers(spawnNameCompleter,
                         CommandArgCompleter.enumLowerList(Villager.Profession.class),
                         CommandArgCompleter.enumLowerList(Villager.Type.class),
                         CommandArgCompleter.integer(i -> i >= 1 && i <= 5))
@@ -86,17 +105,18 @@ final class MerchantCommand implements TabExecutor {
 
     boolean recipeCreate(Player player, String[] args) {
         if (args.length < 1 || args.length > 2) return false;
-        RecipeMakerMenu menu = new RecipeMakerMenu(args[0]);
-        int maxUses = -1;
-        if (args.length >= 2) {
-            try {
-                maxUses = Integer.parseInt(args[1]);
-            } catch (NumberFormatException nfe) {
-                throw new CommandWarn("Invalid maxUses: " + args[1]);
-            }
+        String name = args[0];
+        MerchantFile merchantFile = plugin.merchants.merchantFileMap.get(name);
+        if (merchantFile == null) {
+            merchantFile = new MerchantFile(name);
         }
+        RecipeMakerMenu menu = new RecipeMakerMenu(name);
+        final int maxUses = args.length >= 2
+            ? intOf(args[1])
+            : -1;
         Inventory inventory = plugin.getServer()
             .createInventory(menu, 9, Component.text("New Merchant Recipe"));
+        menu.merchantFile = merchantFile;
         menu.inventory = inventory;
         menu.maxUses = maxUses;
         player.openInventory(inventory);
@@ -104,55 +124,59 @@ final class MerchantCommand implements TabExecutor {
     }
 
     boolean recipeList(CommandSender sender, String[] args) {
+        if (args.length == 0) {
+            sender.sendMessage(Component.text("" + plugin.merchants.merchantFileMap.size() + " merchants:",
+                                              NamedTextColor.YELLOW));
+            for (String name : plugin.merchants.merchantFileMap.keySet()) {
+                sender.sendMessage(Component.text("- " + name, NamedTextColor.YELLOW));
+            }
+            return true;
+        }
+        if (args.length != 1) return false;
+        MerchantFile merchantFile = merchantFileOf(args[0]);
         int i = 0;
-        for (Recipe recipe : plugin.merchants.recipes.recipes) {
-            sender.sendMessage(Component.text("" + (i++) + ") "
-                                              + recipe.merchant + ": "
-                                              + Items.toString(recipe)
-                                              + " max=" + recipe.maxUses,
+        sender.sendMessage(Component.text(merchantFile.getName() + " has " + merchantFile.getRecipes().size()
+                                          + " recipes:", NamedTextColor.YELLOW));
+        for (Recipe recipe : merchantFile.getRecipes()) {
+            sender.sendMessage(Component.text("" + (i++) + ") " + Items.toString(recipe),
                                               NamedTextColor.YELLOW));
         }
-        sender.sendMessage(Component.text(i + " total recipes", NamedTextColor.YELLOW));
-        return true;
-    }
-
-    boolean recipeDelete(CommandSender sender, String[] args) {
-        if (args.length != 1) return false;
-        int i = intOf(args[0]);
-        if (i < 0 || i >= plugin.merchants.recipes.recipes.size()) {
-            throw new CommandWarn("Illegal index: " + i);
-        }
-        Recipe recipe = plugin.merchants.recipes.recipes.remove(i);
-        plugin.merchants.save();
-        sender.sendMessage(Component.text("Deleted recipe #" + i + ": " + Items.toString(recipe), NamedTextColor.YELLOW));
         return true;
     }
 
     boolean recipeEdit(Player player, String[] args) {
-        if (args.length < 1 || args.length > 2) return false;
-        int i = intOf(args[0]);
-        if (i < 0 || i >= plugin.merchants.recipes.recipes.size()) {
-            throw new CommandWarn("Illegal index: " + i);
-        }
-        int maxUses = -1;
-        if (args.length >= 2) {
-            try {
-                maxUses = Integer.parseInt(args[1]);
-            } catch (NumberFormatException nfe) {
-                throw new CommandWarn("Invalid maxUses: " + args[1]);
-            }
-        }
-        Recipe recipe = plugin.merchants.recipes.recipes.get(i);
-        RecipeMakerMenu menu = new RecipeMakerMenu(recipe.merchant);
+        if (args.length < 2 || args.length > 3) return false;
+        String name = args[0];
+        int index = intOf(args[1]);
+        final int maxUses = args.length >= 3
+            ? intOf(args[2])
+            : -1;
+        MerchantFile merchantFile = merchantFileOf(name);
+        Recipe recipe = recipeOf(merchantFile, index);
+        RecipeMakerMenu menu = new RecipeMakerMenu(merchantFile.getName());
+        menu.merchantFile = merchantFile;
         menu.recipe = recipe;
         Inventory inventory = plugin.getServer()
             .createInventory(menu, 9, Component.text("Edit Merchant Recipe"));
-        inventory.setItem(0, Items.deserialize(recipe.inA));
-        inventory.setItem(1, Items.deserialize(recipe.inB));
-        inventory.setItem(2, Items.deserialize(recipe.out));
+        inventory.setItem(0, Items.deserialize(recipe.getInA()));
+        inventory.setItem(1, Items.deserialize(recipe.getInB()));
+        inventory.setItem(2, Items.deserialize(recipe.getOut()));
         menu.inventory = inventory;
         menu.maxUses = maxUses;
         player.openInventory(inventory);
+        return true;
+    }
+
+    boolean recipeDelete(CommandSender sender, String[] args) {
+        if (args.length != 2) return false;
+        String name = args[0];
+        int index = intOf(args[1]);
+        MerchantFile merchantFile = merchantFileOf(name);
+        Recipe recipe = recipeOf(merchantFile, index);
+        merchantFile.getRecipes().remove(recipe);
+        plugin.merchants.saveMerchant(merchantFile);
+        sender.sendMessage(Component.text("Deleted recipe " + merchantFile.getName() + "/" + index + ": " + Items.toString(recipe),
+                                          NamedTextColor.YELLOW));
         return true;
     }
 
@@ -173,52 +197,47 @@ final class MerchantCommand implements TabExecutor {
     }
 
     boolean spawnCreate(Player player, String[] args) {
-        if (args.length != 1) return false;
-        String merchant = args[0];
+        if (args.length != 1 && args.length != 2) return false;
+        MerchantFile merchantFile = merchantFileOf(args[0]);
+        String name = args.length >= 2
+            ? args[1]
+            : merchantFile.getName();
         Spawn spawn = new Spawn();
         spawn.load(player.getLocation());
-        spawn.merchant = merchant;
-        plugin.merchants.recipes.spawns.add(spawn);
-        plugin.merchants.save();
+        spawn.setName(name);
+        spawn.setMerchant(merchantFile.getName());
+        plugin.merchants.spawnMap.put(name, spawn);
+        plugin.merchants.saveSpawn(spawn);
         plugin.merchants.spawnAll();
-        player.sendMessage(Component.text(merchant + " spawn created at current location", NamedTextColor.YELLOW));
+        player.sendMessage(Component.text("Spawn " + name + " created at current location", NamedTextColor.YELLOW));
         return true;
     }
 
     boolean spawnList(CommandSender sender, String[] args) {
         int i = 0;
-        for (Spawn spawn : plugin.merchants.recipes.spawns) {
+        sender.sendMessage(Component.text(plugin.merchants.spawnMap.size() + " spawns:", NamedTextColor.YELLOW));
+        for (Spawn spawn : plugin.merchants.spawnMap.values()) {
             sender.sendMessage(Component.text("" + (i++) + ") "
                                               + spawn.simplified(),
                                               NamedTextColor.YELLOW));
         }
-        sender.sendMessage(Component.text(i + " total spawns", NamedTextColor.YELLOW));
         return true;
     }
 
     boolean spawnDelete(CommandSender sender, String[] args) {
         if (args.length != 1) return false;
-        int i = intOf(args[0]);
-        if (i < 0 || i >= plugin.merchants.recipes.spawns.size()) {
-            throw new CommandWarn("Illegal index: " + i);
-        }
-        Spawn spawn = plugin.merchants.recipes.spawns.remove(i);
-        plugin.merchants.save();
+        Spawn spawn = spawnOf(args[0]);
+        plugin.merchants.deleteSpawn(spawn);
         plugin.merchants.clearMobs();
         plugin.merchants.spawnAll();
-        sender.sendMessage(Component.text("Deleted spawn #" + i + ": " + spawn.simplified(), NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("Deleted spawn :" + spawn.simplified(), NamedTextColor.YELLOW));
         return true;
     }
 
     boolean reload(CommandSender sender, String[] args) {
+        plugin.merchants.unload();
         plugin.merchants.load();
-        sender.sendMessage(Component.text("Recipes reloaded", NamedTextColor.YELLOW));
-        return true;
-    }
-
-    boolean save(CommandSender sender, String[] args) {
-        plugin.merchants.save();
-        sender.sendMessage(Component.text("Recipes saved", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("Files reloaded", NamedTextColor.YELLOW));
         return true;
     }
 
@@ -231,7 +250,7 @@ final class MerchantCommand implements TabExecutor {
             throw new CommandWarn("Invalid JSON. See console!");
         }
         spawn.setDisplayName(displayName);
-        plugin.merchants.save();
+        plugin.merchants.saveSpawn(spawn);
         plugin.merchants.clearMobs();
         plugin.merchants.spawnAll();
         sender.sendMessage(Component.text().content("Display name set to ").color(NamedTextColor.YELLOW)
@@ -243,19 +262,20 @@ final class MerchantCommand implements TabExecutor {
         if (args.length != 4) return false;
         Spawn spawn = spawnOf(args[0]);
         Spawn.Appearance appearance = new Spawn.Appearance();
-        appearance.entityType = EntityType.VILLAGER;
+        appearance.setEntityType(EntityType.VILLAGER);
         try {
-            appearance.villagerProfession = Villager.Profession.valueOf(args[1].toUpperCase());
-            appearance.villagerType = Villager.Type.valueOf(args[2].toUpperCase());
+            appearance.setVillagerProfession(Villager.Profession.valueOf(args[1].toUpperCase()));
+            appearance.setVillagerType(Villager.Type.valueOf(args[2].toUpperCase()));
         } catch (IllegalArgumentException iae) {
             throw new CommandWarn("Invalid profession or type: " + args[1] + ", " + args[2]);
         }
-        appearance.villagerLevel = intOf(args[3]);
-        if (appearance.villagerLevel < 1 || appearance.villagerLevel > 5) {
-            throw new CommandWarn("Illegal villager level: " + appearance.villagerLevel);
+        final int lvl = intOf(args[3]);
+        if (lvl < 1 || lvl > 5) {
+            throw new CommandWarn("Illegal villager level: " + lvl);
         }
-        spawn.appearance = appearance;
-        plugin.merchants.save();
+        appearance.setVillagerLevel(lvl);
+        spawn.setAppearance(appearance);
+        plugin.merchants.saveSpawn(spawn);
         plugin.merchants.clearMobs();
         plugin.merchants.spawnAll();
         sender.sendMessage(Component.text("Villager appearance updated", NamedTextColor.YELLOW));
@@ -282,11 +302,26 @@ final class MerchantCommand implements TabExecutor {
         }
     }
 
-    private Spawn spawnOf(final String arg) throws CommandWarn {
-        int index = intOf(arg);
-        if (index < 0 || index >= plugin.merchants.recipes.spawns.size()) {
-            throw new CommandWarn("Illegal spawn index: " + index);
+    private MerchantFile merchantFileOf(final String arg) throws CommandWarn {
+        MerchantFile result = plugin.merchants.merchantFileMap.get(arg);
+        if (result == null) {
+            throw new CommandWarn("Merchant not found: " + arg);
         }
-        return plugin.merchants.recipes.spawns.get(index);
+        return result;
+    }
+
+    private Recipe recipeOf(MerchantFile merchantFile, int index) {
+        if (index < 0 || index >= merchantFile.getRecipes().size()) {
+            throw new CommandWarn("Invalid index: " + index);
+        }
+        return merchantFile.getRecipes().get(index);
+    }
+
+    private Spawn spawnOf(final String arg) throws CommandWarn {
+        Spawn spawn = plugin.merchants.spawnMap.get(arg);
+        if (spawn == null) {
+            throw new CommandWarn("Spawn not found: " + arg);
+        }
+        return spawn;
     }
 }

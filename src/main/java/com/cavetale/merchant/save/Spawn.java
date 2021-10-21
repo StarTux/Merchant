@@ -1,4 +1,4 @@
-package com.cavetale.merchant;
+package com.cavetale.merchant.save;
 
 import com.cavetale.core.util.Json;
 import lombok.Data;
@@ -14,6 +14,7 @@ import org.bukkit.entity.Villager;
  */
 @Data
 public final class Spawn {
+    protected String name;
     protected String world;
     protected double x;
     protected double y;
@@ -25,7 +26,8 @@ public final class Spawn {
     protected Appearance appearance;
     protected transient Component displayNameComponent; // Cache
 
-    protected static final class Appearance {
+    @Data
+    public static final class Appearance {
         protected EntityType entityType;
         protected Villager.Profession villagerProfession;
         protected Villager.Type villagerType;
@@ -49,7 +51,8 @@ public final class Spawn {
 
     public String simplified() {
         return
-            merchant
+            name
+            + " " + merchant
             + ";" + world
             + ":" + (int) Math.floor(x)
             + "," + (int) Math.floor(y)

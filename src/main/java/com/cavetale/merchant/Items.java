@@ -1,5 +1,6 @@
 package com.cavetale.merchant;
 
+import com.cavetale.merchant.save.Recipe;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -65,12 +66,12 @@ public final class Items {
     }
 
     public static String toString(Recipe recipe) {
-        return "'" + recipe.merchant + "' "
-            + toString(deserialize(recipe.inA))
-            + (recipe.inB != null
-               ? " + " + toString(deserialize(recipe.inB))
+        return "'" + recipe.getMerchant() + "' "
+            + toString(deserialize(recipe.getInA()))
+            + (recipe.getInB() != null
+               ? " + " + toString(deserialize(recipe.getInB()))
                : "")
-            + " => " + toString(deserialize(recipe.out))
-            + " max=" + recipe.maxUses;
+            + " => " + toString(deserialize(recipe.getOut()))
+            + " max=" + recipe.getMaxUses();
     }
 }

@@ -1,4 +1,4 @@
-package com.cavetale.merchant;
+package com.cavetale.merchant.save;
 
 import lombok.Data;
 

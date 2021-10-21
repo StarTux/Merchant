@@ -1,0 +1,30 @@
+package com.cavetale.merchant.save;
+
+import java.util.ArrayList;
+import java.util.List;
+import lombok.Data;
+
+/**
+ * JSONable.
+ * Represents one file in the merchants folder.
+ */
+@Data
+public final class MerchantFile {
+    protected String name;
+    protected List<Recipe> recipes;
+
+    public void fix() {
+        long nextId = 0;
+        for (Recipe recipe : recipes) {
+            recipe.merchant = name;
+            recipe.id = nextId++;
+        }
+    }
+
+    public MerchantFile() { }
+
+    public MerchantFile(final String name) {
+        this.name = name;
+        this.recipes = new ArrayList<>();
+    }
+}

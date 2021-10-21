@@ -3,6 +3,10 @@ package com.cavetale.merchant;
 import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
 import com.cavetale.core.event.player.PluginPlayerEvent;
 import com.cavetale.core.util.Json;
+import com.cavetale.merchant.save.MerchantFile;
+import com.cavetale.merchant.save.Recipe;
+import com.cavetale.merchant.save.Recipes;
+import com.cavetale.merchant.save.Spawn;
 import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsPlugin;
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
@@ -47,11 +51,14 @@ import org.bukkit.inventory.meta.SkullMeta;
 @RequiredArgsConstructor
 public final class Merchants implements Listener {
     final MerchantPlugin plugin;
-    Recipes recipes;
+    protected final Map<String, MerchantFile> merchantFileMap = new HashMap<>();
+    protected final Map<String, Spawn> spawnMap = new HashMap<>();
     private final Map<Spawn, Mob> spawnMobMap = new IdentityHashMap<>();
     private final Map<Integer, Spawn> idSpawnMap = new HashMap<>();
     private final Map<UUID, List<Recipe>> openMerchants = new HashMap<>();
-    static final String PATH = "recipes.json";
+    private File legacyRecipesFile;
+    private File merchantsFolder;
+    private File spawnsFolder;
     private boolean spawning;
 
     static final List<Villager.Profession> PROFESSIONS = Arrays
@@ -70,6 +77,9 @@ public final class Merchants implements Listener {
                 Villager.Profession.WEAPONSMITH);
 
     protected void enable() {
+        legacyRecipesFile = new File(plugin.getDataFolder(), "recipes.json");
+        merchantsFolder = new File(plugin.getDataFolder(), "merchants");
+        spawnsFolder = new File(plugin.getDataFolder(), "spawns");
         Bukkit.getPluginManager().registerEvents(this, plugin);
         load();
         spawnAll();
@@ -80,10 +90,56 @@ public final class Merchants implements Listener {
     }
 
     protected void load() {
-        clearMobs();
-        File file = new File(plugin.getDataFolder(), PATH);
-        recipes = Json.load(file, Recipes.class, Recipes::new);
-        if (recipes.fix()) save();
+        if (legacyRecipesFile.exists()) {
+            plugin.getLogger().info("Migrating legacy file");
+            Recipes recipes = Json.load(legacyRecipesFile, Recipes.class, Recipes::new);
+            List<MerchantFile> newMerchantFileList = new ArrayList<>();
+            for (Recipe recipe : recipes.getRecipes()) {
+                merchantFileMap.computeIfAbsent(recipe.getMerchant(), name -> {
+                        MerchantFile merchantFile = new MerchantFile(name);
+                        newMerchantFileList.add(merchantFile);
+                        return merchantFile;
+                    }).getRecipes().add(recipe);
+            }
+            for (MerchantFile merchantFile : newMerchantFileList) {
+                merchantFile.fix();
+                saveMerchant(merchantFile);
+            }
+            for (Spawn spawn : recipes.getSpawns()) {
+                spawn.setName(spawn.getMerchant());
+                spawnMap.put(spawn.getName(), spawn);
+                saveSpawn(spawn);
+            }
+            legacyRecipesFile.delete();
+        }
+        // End of legacy
+        for (File file : merchantsFolder.listFiles()) {
+            if (!file.isFile())  continue;
+            String name = file.getName();
+            if (!name.endsWith(".json")) continue;
+            name = name.substring(0, name.length() - 5);
+            MerchantFile merchantFile = Json.load(file, MerchantFile.class);
+            if (merchantFile == null) {
+                plugin.getLogger().warning("Invalid merchant file: " + file);
+                continue;
+            }
+            merchantFile.setName(name);
+            merchantFile.fix();
+            merchantFileMap.put(name, merchantFile);
+        }
+        for (File file : spawnsFolder.listFiles()) {
+            if (!file.isFile())  continue;
+            String name = file.getName();
+            if (!name.endsWith(".json")) continue;
+            name = name.substring(0, name.length() - 5);
+            Spawn spawn = Json.load(file, Spawn.class);
+            if (spawn == null) {
+                plugin.getLogger().warning("Invalid spawn file: " + file);
+                continue;
+            }
+            spawn.setName(name);
+            spawnMap.put(name, spawn);
+        }
     }
 
     protected void unload() {
@@ -93,11 +149,26 @@ public final class Merchants implements Listener {
             player.closeInventory();
         }
         openMerchants.clear();
+        merchantFileMap.clear();
+        spawnMap.clear();
     }
 
-    protected void save() {
-        File file = new File(plugin.getDataFolder(), PATH);
-        Json.save(file, recipes, true);
+    protected void saveMerchant(MerchantFile merchantFile) {
+        merchantsFolder.mkdirs();
+        File file = new File(merchantsFolder, merchantFile.getName() + ".json");
+        Json.save(file, merchantFile, true);
+    }
+
+    protected void saveSpawn(Spawn spawn) {
+        spawnsFolder.mkdirs();
+        File file = new File(spawnsFolder, spawn.getName() + ".json");
+        Json.save(file, spawn, true);
+    }
+
+    protected void deleteSpawn(Spawn spawn) {
+        spawnMap.remove(spawn.getName());
+        File file = new File(spawnsFolder, spawn.getName() + ".json");
+        file.delete();
     }
 
     /**
@@ -114,9 +185,9 @@ public final class Merchants implements Listener {
     }
 
     public MerchantRecipe createMerchantRecipe(Player player, Recipe recipe) {
-        ItemStack a = Items.deserialize(recipe.inA);
-        ItemStack b = Items.deserialize(recipe.inB);
-        ItemStack c = Items.deserialize(recipe.out);
+        ItemStack a = Items.deserialize(recipe.getInA());
+        ItemStack b = Items.deserialize(recipe.getInB());
+        ItemStack c = Items.deserialize(recipe.getOut());
         a = ifMytems(a, player);
         b = ifMytems(b, player);
         c = ifMytems(c, player);
@@ -125,9 +196,9 @@ public final class Merchants implements Listener {
         if (b != null) ins.add(b);
         int maxUses;
         int uses;
-        if (recipe.maxUses >= 0) {
-            maxUses = recipe.maxUses;
-            uses = plugin.users.getRecipeUses(player.getUniqueId(), recipe.id);
+        if (recipe.getMaxUses() >= 0) {
+            maxUses = recipe.getMaxUses();
+            uses = plugin.users.getRecipeUses(player.getUniqueId(), recipe);
         } else {
             maxUses = 999;
             uses = 0;
@@ -191,7 +262,7 @@ public final class Merchants implements Listener {
     }
 
     protected void spawnAll() {
-        for (Spawn spawn : recipes.spawns) {
+        for (Spawn spawn : spawnMap.values()) {
             tryToSpawn(spawn);
         }
     }
@@ -205,28 +276,30 @@ public final class Merchants implements Listener {
                 v.setPersistent(false);
                 v.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0);
                 v.setCollidable(false);
-                if (spawn.appearance != null) {
-                    if (spawn.appearance.villagerProfession != null) {
-                        v.setProfession(spawn.appearance.villagerProfession);
+                final Spawn.Appearance appearance = spawn.getAppearance();
+                if (appearance != null) {
+                    if (appearance.getVillagerProfession() != null) {
+                        v.setProfession(appearance.getVillagerProfession());
                     }
-                    if (spawn.appearance.villagerType != null) {
-                        v.setVillagerType(spawn.appearance.villagerType);
+                    if (appearance.getVillagerType() != null) {
+                        v.setVillagerType(appearance.getVillagerType());
                     }
-                    if (spawn.appearance.villagerLevel >= 1 && spawn.appearance.villagerLevel <= 5) {
-                        v.setVillagerLevel(spawn.appearance.villagerLevel);
+                    final int lvl = appearance.getVillagerLevel();
+                    if (lvl >= 1 && lvl <= 5) {
+                        v.setVillagerLevel(lvl);
                     }
                 } else {
-                    if (spawn.merchant.equals("Repairman")) {
+                    if (spawn.getMerchant().equals("Repairman")) {
                         v.setProfession(Villager.Profession.WEAPONSMITH);
-                    } else if (spawn.merchant.equals("Maypole")) {
+                    } else if (spawn.getMerchant().equals("Maypole")) {
                         v.setProfession(Villager.Profession.LIBRARIAN);
-                    } else if (spawn.merchant.equals("PlayerHead")) {
+                    } else if (spawn.getMerchant().equals("PlayerHead")) {
                         v.setProfession(Villager.Profession.CARTOGRAPHER);
                     } else {
                         v.setProfession(randomProfession(PROFESSIONS));
                     }
                     v.setVillagerLevel(5);
-                    if (spawn.merchant.equals("Maypole")) {
+                    if (spawn.getMerchant().equals("Maypole")) {
                         v.setVillagerType(Villager.Type.PLAINS);
                     } else {
                         Villager.Type[] types = Villager.Type.values();
@@ -256,8 +329,8 @@ public final class Merchants implements Listener {
     protected InventoryView openMerchant(Player player, Spawn spawn) {
         Component displayName = spawn.getDisplayName();
         return displayName != null && !Component.empty().equals(displayName)
-            ? openMerchant(player, spawn.merchant, displayName)
-            : openMerchant(player, spawn.merchant, Component.text(spawn.merchant));
+            ? openMerchant(player, spawn.getMerchant(), displayName)
+            : openMerchant(player, spawn.getMerchant(), Component.text(spawn.getMerchant()));
     }
 
     /**
@@ -272,11 +345,12 @@ public final class Merchants implements Listener {
         } else if ("PlayerHead".equals(name)) {
             return player.openMerchant(createPlayerHeadSalesman(player, displayName), true);
         }
+        MerchantFile merchantFile = merchantFileMap.get(name);
+        if (merchantFile == null) throw new IllegalArgumentException("Merchant not found: " + name);
         Merchant merchant = plugin.getServer().createMerchant(displayName);
         List<MerchantRecipe> merchantRecipeList = new ArrayList<>();
         List<Recipe> recipeList = new ArrayList<>();
-        for (Recipe recipe : recipes.recipes) {
-            if (!name.equals(recipe.merchant)) continue;
+        for (Recipe recipe : merchantFile.getRecipes()) {
             MerchantRecipe merchantRecipe = createMerchantRecipe(player, recipe);
             merchantRecipeList.add(merchantRecipe);
             recipeList.add(recipe);
@@ -296,16 +370,11 @@ public final class Merchants implements Listener {
         int max = Math.min(recipeList.size(), merchantRecipeList.size());
         for (int i = 0; i < max; i += 1) {
             Recipe recipe = recipeList.get(i);
-            if (recipe.maxUses < 0) continue;
+            if (recipe.getMaxUses() < 0) continue;
             MerchantRecipe merchantRecipe = merchantRecipeList.get(i);
-            plugin.users.setRecipeUses(player.getUniqueId(), recipe.id, merchantRecipe.getUses());
+            plugin.users.setRecipeUses(player.getUniqueId(), recipe, merchantRecipe.getUses());
             plugin.users.save(player.getUniqueId());
         }
-    }
-
-    public void addRecipe(Recipe recipe) {
-        recipes.recipes.add(recipe);
-        recipe.id = ++recipes.recipeId;
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -346,9 +415,9 @@ public final class Merchants implements Listener {
         event.setCancelled(true);
         Player player = event.getPlayer();
         openMerchant(player, spawn);
-        plugin.getLogger().info(player.getName() + " opened " + spawn.merchant);
+        plugin.getLogger().info(player.getName() + " opened " + spawn.getMerchant());
         PluginPlayerEvent.Name.INTERACT_NPC.ultimate(plugin, player)
-            .detail(Detail.NAME, spawn.merchant)
+            .detail(Detail.NAME, spawn.getMerchant())
             .call();
     }
 
@@ -376,18 +445,22 @@ public final class Merchants implements Listener {
             Recipe recipe = menu.recipe != null
                 ? menu.recipe
                 : new Recipe();
-            recipe.merchant = menu.merchant;
-            recipe.inA = Items.serialize(a);
-            recipe.inB = Items.serialize(b);
-            recipe.out = Items.serialize(c);
-            recipe.maxUses = menu.maxUses;
+            recipe.setMerchant(menu.merchant);
+            recipe.setInA(Items.serialize(a));
+            recipe.setInB(Items.serialize(b));
+            recipe.setOut(Items.serialize(c));
+            recipe.setMaxUses(menu.maxUses);
             if (menu.recipe == null) {
-                addRecipe(recipe);
-                save();
+                // New recipe
+                merchantFileMap.put(menu.merchantFile.getName(), menu.merchantFile);
+                menu.merchantFile.getRecipes().add(recipe);
+                menu.merchantFile.fix();
+                saveMerchant(menu.merchantFile);
                 player.sendMessage(Component.text("New recipe created: " + Items.toString(recipe),
                                                   NamedTextColor.YELLOW));
             } else {
-                save();
+                // Editing
+                saveMerchant(menu.merchantFile);
                 player.sendMessage(Component.text("Recipe edited: " + Items.toString(recipe),
                                                   NamedTextColor.YELLOW));
             }

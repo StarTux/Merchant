@@ -1,6 +1,8 @@
 package com.cavetale.merchant;
 
 import com.cavetale.core.util.Json;
+import com.cavetale.merchant.save.Recipe;
+import com.cavetale.merchant.save.User;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,13 +41,12 @@ public final class Users {
         Json.save(file, user, true);
     }
 
-    public void setRecipeUses(UUID uuid, long id, int uses) {
-        of(uuid).recipeUses.put(id, uses);
+    public void setRecipeUses(UUID uuid, Recipe recipe, int uses) {
+        of(uuid).setRecipeUses(recipe.getMerchant(), recipe.getId(), uses);
     }
 
-    public int getRecipeUses(UUID uuid, long id) {
-        Integer result = of(uuid).recipeUses.get(id);
-        return result != null ? result : 0;
+    public int getRecipeUses(UUID uuid, Recipe recipe) {
+        return of(uuid).getRecipeUses(recipe.getMerchant(), recipe.getId());
     }
 
     public void clear() {
