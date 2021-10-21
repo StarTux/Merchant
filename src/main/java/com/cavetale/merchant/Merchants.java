@@ -113,8 +113,8 @@ public final class Merchants implements Listener {
             legacyRecipesFile.delete();
         }
         // End of legacy
-        for (File file : merchantsFolder.listFiles()) {
-            if (!file.isFile())  continue;
+        for (File file : dir(merchantsFolder)) {
+            if (!file.isFile()) continue;
             String name = file.getName();
             if (!name.endsWith(".json")) continue;
             name = name.substring(0, name.length() - 5);
@@ -127,8 +127,8 @@ public final class Merchants implements Listener {
             merchantFile.fix();
             merchantFileMap.put(name, merchantFile);
         }
-        for (File file : spawnsFolder.listFiles()) {
-            if (!file.isFile())  continue;
+        for (File file : dir(spawnsFolder)) {
+            if (!file.isFile()) continue;
             String name = file.getName();
             if (!name.endsWith(".json")) continue;
             name = name.substring(0, name.length() - 5);
@@ -140,6 +140,11 @@ public final class Merchants implements Listener {
             spawn.setName(name);
             spawnMap.put(name, spawn);
         }
+    }
+
+    private static List<File> dir(File dir) {
+        File[] files = dir.listFiles();
+        return files != null ? List.of(files) : List.of();
     }
 
     protected void unload() {
