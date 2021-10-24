@@ -205,7 +205,7 @@ public final class Merchants implements Listener {
             maxUses = recipe.getMaxUses();
             uses = plugin.users.getRecipeUses(player.getUniqueId(), recipe);
         } else {
-            maxUses = 999;
+            maxUses = 1;
             uses = 0;
         }
         MerchantRecipe result = new MerchantRecipe(c, maxUses);
