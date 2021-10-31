@@ -290,6 +290,7 @@ final class MerchantCommand implements TabExecutor {
         if (args.length < 1) return false;
         Spawn spawn = spawnOf(args[0]);
         spawn.load(player.getLocation());
+        plugin.merchants.saveSpawn(spawn);
         player.sendMessage(Component.text("Brought spawn to current location", NamedTextColor.YELLOW));
         return true;
     }
