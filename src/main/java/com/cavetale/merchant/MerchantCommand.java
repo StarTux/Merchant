@@ -89,6 +89,10 @@ final class MerchantCommand implements TabExecutor {
                         CommandArgCompleter.enumLowerList(Villager.Type.class),
                         CommandArgCompleter.integer(i -> i >= 1 && i <= 5))
             .senderCaller(this::spawnSetVillager);
+        spawnNode.addChild("bring").arguments("<name>")
+            .completers(spawnNameCompleter)
+            .description("Bring spawn to current location")
+            .playerCaller(this::spawnBring);
         // finis
         plugin.getCommand("merchant").setExecutor(this);
     }
@@ -279,6 +283,14 @@ final class MerchantCommand implements TabExecutor {
         plugin.merchants.clearMobs();
         plugin.merchants.spawnAll();
         sender.sendMessage(Component.text("Villager appearance updated", NamedTextColor.YELLOW));
+        return true;
+    }
+
+    protected boolean spawnBring(Player player, String[] args) {
+        if (args.length < 1) return false;
+        Spawn spawn = spawnOf(args[0]);
+        spawn.load(player.getLocation());
+        player.sendMessage(Component.text("Brought spawn to current location", NamedTextColor.YELLOW));
         return true;
     }
 
