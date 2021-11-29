@@ -185,7 +185,7 @@ public final class Merchants implements Listener {
         Mytems mytems = Mytems.forItem(in);
         if (mytems == null) return in;
         String serialized = mytems.serializeItem(in);
-        ItemStack res = Mytems.deserializeItem(serialized, player);
+        ItemStack res = Mytems.deserializeItem(serialized);
         return res;
     }
 
@@ -245,10 +245,10 @@ public final class Merchants implements Listener {
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
         head.editMeta(meta -> ((SkullMeta) meta).setPlayerProfile(player.getPlayerProfile()));
         MerchantRecipe recipe = new MerchantRecipe(head, 999);
-        recipe.setIngredients(List.of(Mytems.KITTY_COIN.createItemStack(player)));
+        recipe.setIngredients(List.of(Mytems.KITTY_COIN.createItemStack()));
         MerchantRecipe recipe2 = new MerchantRecipe(head, 999);
         recipe2.setIngredients(List.of(new ItemStack(Material.SKELETON_SKULL),
-                                       Mytems.RUBY.createItemStack(player)));
+                                       Mytems.RUBY.createItemStack()));
         Merchant merchant = plugin.getServer().createMerchant(displayName);
         merchant.setRecipes(List.of(recipe, recipe2));
         return merchant;
