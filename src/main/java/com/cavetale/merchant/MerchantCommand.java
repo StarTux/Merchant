@@ -62,6 +62,12 @@ final class MerchantCommand implements TabExecutor {
                         CommandArgCompleter.NULL)
             .description("Open recipe")
             .senderCaller(this::recipeOpen);
+        recipeNode.addChild("move").arguments("<merchant> <from> <to>")
+            .completers(merchantFileNameCompleter,
+                        CommandArgCompleter.integer(i -> i > 0),
+                        CommandArgCompleter.integer(i -> i > 0))
+            .description("Move recipe to new index")
+            .senderCaller(this::recipeMove);
         // spawn
         CommandArgCompleter spawnNameCompleter = CommandArgCompleter
             .supplyList(() -> new ArrayList<>(plugin.merchants.spawnMap.keySet()));
@@ -197,6 +203,26 @@ final class MerchantCommand implements TabExecutor {
         String merchant = args[0];
         plugin.merchants.openMerchant(target, merchant, Component.text(merchant));
         sender.sendMessage(Component.text(target.getName() + " opened merchant " + merchant, NamedTextColor.YELLOW));
+        return true;
+    }
+
+    boolean recipeMove(CommandSender sender, String[] args) {
+        if (args.length != 3) return false;
+        String name = args[0];
+        MerchantFile merchantFile = merchantFileOf(name);
+        int index1 = intOf(args[1]);
+        int index2 = intOf(args[2]);
+        if (index1 < 0 || index1 >= merchantFile.getRecipes().size()) {
+            throw new CommandWarn("From-index out of bounds: " + index1 + "/"
+                                  + (merchantFile.getRecipes().size() - 1));
+        }
+        Recipe recipe = merchantFile.getRecipes().remove(index1);
+        index2 = Math.max(0, Math.min(merchantFile.getRecipes().size(), index2));
+        merchantFile.getRecipes().add(index2, recipe);
+        plugin.merchants.saveMerchant(merchantFile);
+        sender.sendMessage(Component.text(merchantFile.getName() + ": Recipe moved from index "
+                                          + index1 + " to " + index2 + ": "
+                                          + Items.toString(recipe), NamedTextColor.YELLOW));
         return true;
     }
 
