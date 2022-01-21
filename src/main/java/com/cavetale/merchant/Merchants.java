@@ -19,7 +19,6 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -180,7 +179,7 @@ public final class Merchants implements Listener {
      * If the ItemStack is a Mytem which asks for auto fixing, return
      * the newly created Mytem. If not, return the input.
      */
-    public static ItemStack ifMytems(@Nullable ItemStack in, Player player) {
+    public static ItemStack ifMytems(ItemStack in, Player player) {
         if (in == null) return null;
         Mytems mytems = Mytems.forItem(in);
         if (mytems == null) return in;
