@@ -59,6 +59,9 @@ public final class Merchants implements Listener {
     private File merchantsFolder;
     private File spawnsFolder;
     private boolean spawning;
+    public static final List<String> SPECIAL_NAMES = List.of("Repairman",
+                                                             "Maypole",
+                                                             "PlayerHead");
 
     static final List<Villager.Profession> PROFESSIONS = Arrays
         .asList(Villager.Profession.ARMORER,

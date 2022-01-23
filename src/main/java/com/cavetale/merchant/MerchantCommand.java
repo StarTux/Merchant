@@ -228,18 +228,22 @@ final class MerchantCommand implements TabExecutor {
 
     boolean spawnCreate(Player player, String[] args) {
         if (args.length != 1 && args.length != 2) return false;
-        MerchantFile merchantFile = merchantFileOf(args[0]);
-        String name = args.length >= 2
-            ? args[1]
-            : merchantFile.getName();
+        String merchantName = args[0];
+        if (!Merchants.SPECIAL_NAMES.contains(merchantName)) {
+            merchantFileOf(merchantName);
+        }
+        String spawnName = args.length >= 2 ? args[1] : args[0];
+        if (plugin.merchants.spawnMap.get(spawnName) != null) {
+            throw new CommandWarn("Spawn already exists: " + spawnName);
+        }
         Spawn spawn = new Spawn();
         spawn.load(player.getLocation());
-        spawn.setName(name);
-        spawn.setMerchant(merchantFile.getName());
-        plugin.merchants.spawnMap.put(name, spawn);
+        spawn.setName(spawnName);
+        spawn.setMerchant(merchantName);
+        plugin.merchants.spawnMap.put(spawnName, spawn);
         plugin.merchants.saveSpawn(spawn);
         plugin.merchants.spawnAll();
-        player.sendMessage(Component.text("Spawn " + name + " created at current location", NamedTextColor.YELLOW));
+        player.sendMessage(Component.text("Spawn " + spawnName + " created at current location", NamedTextColor.YELLOW));
         return true;
     }
 
