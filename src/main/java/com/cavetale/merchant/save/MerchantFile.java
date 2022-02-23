@@ -11,6 +11,7 @@ import lombok.Data;
 @Data
 public final class MerchantFile {
     protected String name;
+    protected boolean persistent;
     protected List<Recipe> recipes;
 
     public void fix() {

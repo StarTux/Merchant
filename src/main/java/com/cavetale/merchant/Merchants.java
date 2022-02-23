@@ -203,11 +203,14 @@ public final class Merchants implements Listener {
         if (b != null) ins.add(b);
         int maxUses;
         int uses;
+        MerchantFile merchantFile = merchantFileMap.get(recipe.getMerchant());
         if (recipe.getMaxUses() >= 0) {
             maxUses = recipe.getMaxUses();
-            uses = plugin.users.getRecipeUses(player.getUniqueId(), recipe);
+            uses = merchantFile != null && merchantFile.isPersistent()
+                ? plugin.users.getRecipeUses(player.getUniqueId(), recipe)
+                : 0;
         } else {
-            maxUses = 1;
+            maxUses = 999;
             uses = 0;
         }
         MerchantRecipe result = new MerchantRecipe(c, maxUses);
@@ -375,12 +378,15 @@ public final class Merchants implements Listener {
             plugin.getLogger().warning("Merchants::onClose: Sizes don't match: recipeList=" + recipeList + ", merchantRecipeList=" + merchantRecipeList);
         }
         int max = Math.min(recipeList.size(), merchantRecipeList.size());
-        for (int i = 0; i < max; i += 1) {
-            Recipe recipe = recipeList.get(i);
-            if (recipe.getMaxUses() < 0) continue;
-            MerchantRecipe merchantRecipe = merchantRecipeList.get(i);
-            plugin.users.setRecipeUses(player.getUniqueId(), recipe, merchantRecipe.getUses());
-            plugin.users.save(player.getUniqueId());
+        MerchantFile merchantFile = merchantFileMap.get(recipeList.get(0).getMerchant());
+        if (merchantFile != null && merchantFile.isPersistent()) {
+            for (int i = 0; i < max; i += 1) {
+                Recipe recipe = recipeList.get(i);
+                if (recipe.getMaxUses() < 0) continue;
+                MerchantRecipe merchantRecipe = merchantRecipeList.get(i);
+                plugin.users.setRecipeUses(player.getUniqueId(), recipe, merchantRecipe.getUses());
+                plugin.users.save(player.getUniqueId());
+            }
         }
     }
 

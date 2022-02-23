@@ -1,5 +1,6 @@
 package com.cavetale.merchant;
 
+import com.cavetale.core.command.AbstractCommand;
 import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
@@ -12,24 +13,22 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.inventory.Inventory;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
 
-@RequiredArgsConstructor
-final class MerchantCommand implements TabExecutor {
-    private final MerchantPlugin plugin;
-    private CommandNode rootNode;
+final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
+    MerchantCommand(final MerchantPlugin plugin) {
+        super(plugin, "merchant");
+    }
 
-    protected void enable() {
-        rootNode = new CommandNode("merchant");
+    @Override
+    protected void onEnable() {
         rootNode.addChild("reload").denyTabCompletion()
             .description("Reload configuration")
             .senderCaller(this::reload);
@@ -99,18 +98,17 @@ final class MerchantCommand implements TabExecutor {
             .completers(spawnNameCompleter)
             .description("Bring spawn to current location")
             .playerCaller(this::spawnBring);
-        // finis
-        plugin.getCommand("merchant").setExecutor(this);
-    }
-
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
-        return rootNode.call(sender, command, alias, args);
-    }
-
-    @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        return rootNode.complete(sender, command, alias, args);
+        // merchant
+        CommandNode merchantNode = rootNode.addChild("merchant")
+            .description("Merchant options");
+        merchantNode.addChild("list").denyTabCompletion()
+            .description("List all merchants")
+            .senderCaller(this::merchantList);
+        merchantNode.addChild("persistent").arguments("<merchant> true|false")
+            .description("Update persistence of a merchant")
+            .completers(merchantFileNameCompleter,
+                        CommandArgCompleter.list("true", "false"))
+            .senderCaller(this::merchantPersistent);
     }
 
     boolean recipeCreate(Player player, String[] args) {
@@ -125,7 +123,7 @@ final class MerchantCommand implements TabExecutor {
             ? intOf(args[1])
             : -1;
         Inventory inventory = plugin.getServer()
-            .createInventory(menu, 9, Component.text("New Merchant Recipe"));
+            .createInventory(menu, 9, text("New Merchant Recipe"));
         menu.merchantFile = merchantFile;
         menu.inventory = inventory;
         menu.maxUses = maxUses;
@@ -135,21 +133,21 @@ final class MerchantCommand implements TabExecutor {
 
     boolean recipeList(CommandSender sender, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage(Component.text("" + plugin.merchants.merchantFileMap.size() + " merchants:",
-                                              NamedTextColor.YELLOW));
+            sender.sendMessage(text("" + plugin.merchants.merchantFileMap.size() + " merchants:",
+                                    YELLOW));
             for (String name : plugin.merchants.merchantFileMap.keySet()) {
-                sender.sendMessage(Component.text("- " + name, NamedTextColor.YELLOW));
+                sender.sendMessage(text("- " + name, YELLOW));
             }
             return true;
         }
         if (args.length != 1) return false;
         MerchantFile merchantFile = merchantFileOf(args[0]);
         int i = 0;
-        sender.sendMessage(Component.text(merchantFile.getName() + " has " + merchantFile.getRecipes().size()
-                                          + " recipes:", NamedTextColor.YELLOW));
+        sender.sendMessage(text(merchantFile.getName() + " has " + merchantFile.getRecipes().size()
+                                + " recipes:", YELLOW));
         for (Recipe recipe : merchantFile.getRecipes()) {
-            sender.sendMessage(Component.text("" + (i++) + ") " + Items.toString(recipe),
-                                              NamedTextColor.YELLOW));
+            sender.sendMessage(text("" + (i++) + ") " + Items.toString(recipe),
+                                    YELLOW));
         }
         return true;
     }
@@ -167,7 +165,7 @@ final class MerchantCommand implements TabExecutor {
         menu.merchantFile = merchantFile;
         menu.recipe = recipe;
         Inventory inventory = plugin.getServer()
-            .createInventory(menu, 9, Component.text("Edit Merchant Recipe"));
+            .createInventory(menu, 9, text("Edit Merchant Recipe"));
         inventory.setItem(0, Items.deserialize(recipe.getInA()));
         inventory.setItem(1, Items.deserialize(recipe.getInB()));
         inventory.setItem(2, Items.deserialize(recipe.getOut()));
@@ -185,8 +183,8 @@ final class MerchantCommand implements TabExecutor {
         Recipe recipe = recipeOf(merchantFile, index);
         merchantFile.getRecipes().remove(recipe);
         plugin.merchants.saveMerchant(merchantFile);
-        sender.sendMessage(Component.text("Deleted recipe " + merchantFile.getName() + "/" + index + ": " + Items.toString(recipe),
-                                          NamedTextColor.YELLOW));
+        sender.sendMessage(text("Deleted recipe " + merchantFile.getName() + "/" + index + ": " + Items.toString(recipe),
+                                YELLOW));
         return true;
     }
 
@@ -201,8 +199,8 @@ final class MerchantCommand implements TabExecutor {
             target = playerOf(sender);
         }
         String merchant = args[0];
-        plugin.merchants.openMerchant(target, merchant, Component.text(merchant));
-        sender.sendMessage(Component.text(target.getName() + " opened merchant " + merchant, NamedTextColor.YELLOW));
+        plugin.merchants.openMerchant(target, merchant, text(merchant));
+        sender.sendMessage(text(target.getName() + " opened merchant " + merchant, YELLOW));
         return true;
     }
 
@@ -220,9 +218,9 @@ final class MerchantCommand implements TabExecutor {
         index2 = Math.max(0, Math.min(merchantFile.getRecipes().size(), index2));
         merchantFile.getRecipes().add(index2, recipe);
         plugin.merchants.saveMerchant(merchantFile);
-        sender.sendMessage(Component.text(merchantFile.getName() + ": Recipe moved from index "
-                                          + index1 + " to " + index2 + ": "
-                                          + Items.toString(recipe), NamedTextColor.YELLOW));
+        sender.sendMessage(text(merchantFile.getName() + ": Recipe moved from index "
+                                + index1 + " to " + index2 + ": "
+                                + Items.toString(recipe), YELLOW));
         return true;
     }
 
@@ -243,17 +241,17 @@ final class MerchantCommand implements TabExecutor {
         plugin.merchants.spawnMap.put(spawnName, spawn);
         plugin.merchants.saveSpawn(spawn);
         plugin.merchants.spawnAll();
-        player.sendMessage(Component.text("Spawn " + spawnName + " created at current location", NamedTextColor.YELLOW));
+        player.sendMessage(text("Spawn " + spawnName + " created at current location", YELLOW));
         return true;
     }
 
     boolean spawnList(CommandSender sender, String[] args) {
         int i = 0;
-        sender.sendMessage(Component.text(plugin.merchants.spawnMap.size() + " spawns:", NamedTextColor.YELLOW));
+        sender.sendMessage(text(plugin.merchants.spawnMap.size() + " spawns:", YELLOW));
         for (Spawn spawn : plugin.merchants.spawnMap.values()) {
-            sender.sendMessage(Component.text("" + (i++) + ") "
-                                              + spawn.simplified(),
-                                              NamedTextColor.YELLOW));
+            sender.sendMessage(text("" + (i++) + ") "
+                                    + spawn.simplified(),
+                                    YELLOW));
         }
         return true;
     }
@@ -264,14 +262,14 @@ final class MerchantCommand implements TabExecutor {
         plugin.merchants.deleteSpawn(spawn);
         plugin.merchants.clearMobs();
         plugin.merchants.spawnAll();
-        sender.sendMessage(Component.text("Deleted spawn :" + spawn.simplified(), NamedTextColor.YELLOW));
+        sender.sendMessage(text("Deleted spawn :" + spawn.simplified(), YELLOW));
         return true;
     }
 
     boolean reload(CommandSender sender, String[] args) {
         plugin.merchants.unload();
         plugin.merchants.load();
-        sender.sendMessage(Component.text("Files reloaded", NamedTextColor.YELLOW));
+        sender.sendMessage(text("Files reloaded", YELLOW));
         return true;
     }
 
@@ -287,7 +285,7 @@ final class MerchantCommand implements TabExecutor {
         plugin.merchants.saveSpawn(spawn);
         plugin.merchants.clearMobs();
         plugin.merchants.spawnAll();
-        sender.sendMessage(Component.text().content("Display name set to ").color(NamedTextColor.YELLOW)
+        sender.sendMessage(text().content("Display name set to ").color(YELLOW)
                            .append(spawn.getDisplayName()));
         return true;
     }
@@ -312,7 +310,7 @@ final class MerchantCommand implements TabExecutor {
         plugin.merchants.saveSpawn(spawn);
         plugin.merchants.clearMobs();
         plugin.merchants.spawnAll();
-        sender.sendMessage(Component.text("Villager appearance updated", NamedTextColor.YELLOW));
+        sender.sendMessage(text("Villager appearance updated", YELLOW));
         return true;
     }
 
@@ -321,7 +319,31 @@ final class MerchantCommand implements TabExecutor {
         Spawn spawn = spawnOf(args[0]);
         spawn.load(player.getLocation());
         plugin.merchants.saveSpawn(spawn);
-        player.sendMessage(Component.text("Brought spawn to current location", NamedTextColor.YELLOW));
+        player.sendMessage(text("Brought spawn to current location", YELLOW));
+        return true;
+    }
+
+    protected boolean merchantList(CommandSender sender, String[] args) {
+        if (args.length != 0) return false;
+        sender.sendMessage(text("" + plugin.merchants.merchantFileMap.size() + " merchants:", YELLOW));
+        for (String name : plugin.merchants.merchantFileMap.keySet()) {
+            sender.sendMessage(text("- " + name, YELLOW));
+        }
+        return true;
+    }
+
+    protected boolean merchantPersistent(CommandSender sender, String[] args) {
+        if (args.length != 2) return false;
+        MerchantFile merchantFile = merchantFileOf(args[0]);
+        boolean value;
+        try {
+            value = Boolean.parseBoolean(args[1]);
+        } catch  (IllegalArgumentException iae) {
+            throw new CommandWarn("Not a boolean: " + args[1]);
+        }
+        merchantFile.setPersistent(value);
+        plugin.merchants.saveMerchant(merchantFile);
+        sender.sendMessage(text("Persistence of " + merchantFile.getName() + " is now " + merchantFile.isPersistent(), YELLOW));
         return true;
     }
 

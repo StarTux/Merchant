@@ -1,7 +1,7 @@
 main: com.cavetale.merchant.MerchantPlugin
 name: Merchant
 version: 0.1
-api-version: 1.17
+api-version: 1.18
 description: Merchants with custom trades
 author: StarTux
 website: https://github.com/StarTux/Merchant
@@ -9,9 +9,9 @@ depend: [Core, Mytems]
 softdepend: []
 commands:
   merchant:
-    aliases: []
+    aliases: [merchantadmin, merchantadm]
     description: Merchant Command
-    permission: merchant.merchant
+    permission: merchant.admin
     usage: |-
       -- Recipes
       /merchant create <name> [maxUses]
@@ -27,6 +27,6 @@ commands:
       /merchant reload
       /merchant save
 permissions:
-  merchant.merchant:
+  merchant.admin:
     description: Use /merchant
     default: op
