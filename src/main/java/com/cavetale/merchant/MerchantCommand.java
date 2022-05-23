@@ -262,7 +262,7 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
         plugin.merchants.deleteSpawn(spawn);
         plugin.merchants.clearMobs();
         plugin.merchants.spawnAll();
-        sender.sendMessage(text("Deleted spawn :" + spawn.simplified(), YELLOW));
+        sender.sendMessage(text("Deleted spawn: " + spawn.simplified(), YELLOW));
         return true;
     }
 
