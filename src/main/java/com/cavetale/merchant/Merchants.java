@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -37,6 +38,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
+import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
@@ -52,8 +54,8 @@ public final class Merchants implements Listener {
     final MerchantPlugin plugin;
     protected final Map<String, MerchantFile> merchantFileMap = new HashMap<>();
     protected final Map<String, Spawn> spawnMap = new HashMap<>();
-    private final Map<Spawn, Mob> spawnMobMap = new IdentityHashMap<>();
-    private final Map<Integer, Spawn> idSpawnMap = new HashMap<>();
+    private final Map<Spawn, UUID> spawnMobMap = new IdentityHashMap<>();
+    private final Map<UUID, Spawn> uuidSpawnMap = new HashMap<>();
     private final Map<UUID, List<Recipe>> openMerchants = new HashMap<>();
     private File legacyRecipesFile;
     private File merchantsFolder;
@@ -260,11 +262,12 @@ public final class Merchants implements Listener {
     }
 
     protected void clearMobs() {
-        for (Mob mob : new ArrayList<>(spawnMobMap.values())) {
-            mob.remove();
+        for (UUID uuid : new ArrayList<>(spawnMobMap.values())) {
+            Entity entity = Bukkit.getEntity(uuid);
+            if (entity != null) entity.remove();
         }
         spawnMobMap.clear();
-        idSpawnMap.clear();
+        uuidSpawnMap.clear();
     }
 
     protected Villager.Profession randomProfession(List<Villager.Profession> list) {
@@ -327,13 +330,13 @@ public final class Merchants implements Listener {
             return;
         }
         Bukkit.getMobGoals().removeAllGoals(villager);
-        spawnMobMap.put(spawn, villager);
-        idSpawnMap.put(villager.getEntityId(), spawn);
+        spawnMobMap.put(spawn, villager.getUniqueId());
+        uuidSpawnMap.put(villager.getUniqueId(), spawn);
         plugin.getLogger().info("Spawned: " + spawn.simplified());
     }
 
     protected Spawn spawnOf(Entity entity) {
-        return idSpawnMap.get(entity.getEntityId());
+        return uuidSpawnMap.get(entity.getUniqueId());
     }
 
     protected InventoryView openMerchant(Player player, Spawn spawn) {
@@ -370,7 +373,7 @@ public final class Merchants implements Listener {
         return player.openMerchant(merchant, true);
     }
 
-    void onClose(Player player, MerchantInventory inventory) {
+    private void onClose(Player player, MerchantInventory inventory) {
         List<Recipe> recipeList = openMerchants.remove(player.getUniqueId());
         if (recipeList == null) return;
         List<MerchantRecipe> merchantRecipeList = inventory.getMerchant().getRecipes();
@@ -391,13 +394,29 @@ public final class Merchants implements Listener {
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
-    void onEntityRemoveFromWorld(EntityRemoveFromWorldEvent event) {
-        int entityId = event.getEntity().getEntityId();
-        Spawn spawn = idSpawnMap.remove(entityId);
+    private void onEntityRemoveFromWorld(EntityRemoveFromWorldEvent event) {
+        Spawn spawn = uuidSpawnMap.remove(event.getEntity().getUniqueId());
         if (spawn == null) return;
         spawnMobMap.remove(spawn);
+        plugin.getLogger().info("Removed from World: " + spawn.simplified());
     }
 
+    @EventHandler(priority = EventPriority.MONITOR)
+    private void onWorldUnload(WorldUnloadEvent event) {
+        Bukkit.getScheduler().runTask(plugin, this::checkSpawnValidity);
+    }
+
+    private void checkSpawnValidity() {
+        for (Iterator<Map.Entry<Spawn, UUID>> iter = spawnMobMap.entrySet().iterator(); iter.hasNext();) {
+            Map.Entry<Spawn, UUID> it = iter.next();
+            UUID uuid = it.getValue();
+            if (Bukkit.getEntity(uuid) != null) continue;
+            Spawn spawn = it.getKey();
+            iter.remove();
+            uuidSpawnMap.remove(uuid);
+            plugin.getLogger().info("Spawn disappeared: " + spawn.simplified());
+        }
+    }
 
     @EventHandler
     public void onChunkLoad(ChunkLoadEvent event) {
@@ -413,7 +432,7 @@ public final class Merchants implements Listener {
     void onEntityMove(EntityMoveEvent event) {
         if (!(event.getEntity() instanceof Mob)) return;
         Mob mob = (Mob) event.getEntity();
-        Spawn spawn = idSpawnMap.get(mob.getEntityId());
+        Spawn spawn = uuidSpawnMap.get(mob.getUniqueId());
         if (spawn == null) return;
         if (!spawn.isNearby(mob.getLocation(), 1.0)) {
             mob.teleport(spawn.toLocation());
