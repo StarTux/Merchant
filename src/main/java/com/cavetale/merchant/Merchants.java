@@ -5,7 +5,6 @@ import com.cavetale.core.event.player.PluginPlayerEvent;
 import com.cavetale.core.util.Json;
 import com.cavetale.merchant.save.MerchantFile;
 import com.cavetale.merchant.save.Recipe;
-import com.cavetale.merchant.save.Recipes;
 import com.cavetale.merchant.save.Spawn;
 import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsPlugin;
@@ -57,7 +56,6 @@ public final class Merchants implements Listener {
     private final Map<Spawn, UUID> spawnMobMap = new IdentityHashMap<>();
     private final Map<UUID, Spawn> uuidSpawnMap = new HashMap<>();
     private final Map<UUID, List<Recipe>> openMerchants = new HashMap<>();
-    private File legacyRecipesFile;
     private File merchantsFolder;
     private File spawnsFolder;
     private boolean spawning;
@@ -81,7 +79,6 @@ public final class Merchants implements Listener {
                 Villager.Profession.WEAPONSMITH);
 
     protected void enable() {
-        legacyRecipesFile = new File(plugin.getDataFolder(), "recipes.json");
         merchantsFolder = new File(plugin.getDataFolder(), "merchants");
         spawnsFolder = new File(plugin.getDataFolder(), "spawns");
         Bukkit.getPluginManager().registerEvents(this, plugin);
@@ -94,29 +91,6 @@ public final class Merchants implements Listener {
     }
 
     protected void load() {
-        if (legacyRecipesFile.exists()) {
-            plugin.getLogger().info("Migrating legacy file");
-            Recipes recipes = Json.load(legacyRecipesFile, Recipes.class, Recipes::new);
-            List<MerchantFile> newMerchantFileList = new ArrayList<>();
-            for (Recipe recipe : recipes.getRecipes()) {
-                merchantFileMap.computeIfAbsent(recipe.getMerchant(), name -> {
-                        MerchantFile merchantFile = new MerchantFile(name);
-                        newMerchantFileList.add(merchantFile);
-                        return merchantFile;
-                    }).getRecipes().add(recipe);
-            }
-            for (MerchantFile merchantFile : newMerchantFileList) {
-                merchantFile.fix();
-                saveMerchant(merchantFile);
-            }
-            for (Spawn spawn : recipes.getSpawns()) {
-                spawn.setName(spawn.getMerchant());
-                spawnMap.put(spawn.getName(), spawn);
-                saveSpawn(spawn);
-            }
-            legacyRecipesFile.delete();
-        }
-        // End of legacy
         for (File file : dir(merchantsFolder)) {
             if (!file.isFile()) continue;
             String name = file.getName();
