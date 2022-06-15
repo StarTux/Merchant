@@ -429,9 +429,9 @@ public final class Merchants implements Listener {
         Player player = event.getPlayer();
         openMerchant(player, spawn);
         plugin.getLogger().info(player.getName() + " opened " + spawn.getMerchant());
-        PluginPlayerEvent.Name.INTERACT_NPC.ultimate(plugin, player)
+        PluginPlayerEvent.Name.INTERACT_NPC.make(plugin, player)
             .detail(Detail.NAME, spawn.getMerchant())
-            .call();
+            .callEvent();
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
