@@ -1,5 +1,6 @@
 package com.cavetale.merchant;
 
+import com.cavetale.core.event.player.PlayerInteractNpcEvent;
 import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
 import com.cavetale.core.event.player.PluginPlayerEvent;
 import com.cavetale.core.util.Json;
@@ -420,6 +421,9 @@ public final class Merchants implements Listener {
         if (spawn == null) return;
         event.setCancelled(true);
         Player player = event.getPlayer();
+        if (!new PlayerInteractNpcEvent(player, spawn.getMerchant(), entity).callEvent()) {
+            return;
+        }
         openMerchant(player, spawn);
         plugin.getLogger().info(player.getName() + " opened " + spawn.getMerchant());
         PluginPlayerEvent.Name.INTERACT_NPC.make(plugin, player)
