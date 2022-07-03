@@ -421,11 +421,10 @@ public final class Merchants implements Listener {
         if (spawn == null) return;
         event.setCancelled(true);
         Player player = event.getPlayer();
-        if (!new PlayerInteractNpcEvent(player, spawn.getMerchant(), entity).callEvent()) {
-            return;
+        if (new PlayerInteractNpcEvent(player, spawn.getMerchant(), entity).callEvent()) {
+            openMerchant(player, spawn);
+            plugin.getLogger().info(player.getName() + " opened " + spawn.getMerchant());
         }
-        openMerchant(player, spawn);
-        plugin.getLogger().info(player.getName() + " opened " + spawn.getMerchant());
         PluginPlayerEvent.Name.INTERACT_NPC.make(plugin, player)
             .detail(Detail.NAME, spawn.getMerchant())
             .callEvent();
