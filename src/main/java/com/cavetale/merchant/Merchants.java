@@ -211,7 +211,7 @@ public final class Merchants implements Listener {
             if (dmg == 0) continue;
             meta.setDamage(0);
             output.setItemMeta((ItemMeta) meta);
-            MerchantRecipe recipe = new MerchantRecipe(output, 999);
+            MerchantRecipe recipe = new MerchantRecipe(output, 1);
             List<ItemStack> ins = new ArrayList<>(2);
             ins.add(item.clone());
             final int price = Math.max(1, (dmg * 10) / max);
