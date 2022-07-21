@@ -227,8 +227,8 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
     boolean spawnCreate(Player player, String[] args) {
         if (args.length != 1 && args.length != 2) return false;
         String merchantName = args[0];
-        if (!Merchants.SPECIAL_NAMES.contains(merchantName)) {
-            merchantFileOf(merchantName);
+        if (!Merchants.SPECIAL_NAMES.contains(merchantName) && plugin.merchants.merchantFileMap.get(merchantName) == null) {
+            player.sendMessage(text("Warning: Unknown merchant: " + merchantName));
         }
         String spawnName = args.length >= 2 ? args[1] : args[0];
         if (plugin.merchants.spawnMap.get(spawnName) != null) {
