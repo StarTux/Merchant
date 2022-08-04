@@ -9,6 +9,7 @@ import com.cavetale.merchant.save.Recipe;
 import com.cavetale.merchant.save.Spawn;
 import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsPlugin;
+import com.cavetale.mytems.item.coin.BankTeller;
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import io.papermc.paper.event.entity.EntityMoveEvent;
 import java.io.File;
@@ -62,7 +63,8 @@ public final class Merchants implements Listener {
     private boolean spawning;
     public static final List<String> SPECIAL_NAMES = List.of("Repairman",
                                                              "Maypole",
-                                                             "PlayerHead");
+                                                             "PlayerHead",
+                                                             "BankTeller");
 
     static final List<Villager.Profession> PROFESSIONS = Arrays
         .asList(Villager.Profession.ARMORER,
@@ -332,6 +334,9 @@ public final class Merchants implements Listener {
             return player.openMerchant(createRepairman(player, displayName), true);
         } else if ("PlayerHead".equals(name)) {
             return player.openMerchant(createPlayerHeadSalesman(player, displayName), true);
+        } else if ("BankTeller".equals(name)) {
+            BankTeller.open(player);
+            return player.getOpenInventory();
         }
         MerchantFile merchantFile = merchantFileMap.get(name);
         if (merchantFile == null) throw new IllegalArgumentException("Merchant not found: " + name);
