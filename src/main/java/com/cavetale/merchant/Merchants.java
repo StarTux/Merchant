@@ -217,7 +217,7 @@ public final class Merchants implements Listener {
             List<ItemStack> ins = new ArrayList<>(2);
             ins.add(item.clone());
             final int price = Math.max(1, (dmg * 10) / max);
-            ins.add(new ItemStack(Material.DIAMOND, price));
+            ins.add(Mytems.RUBY.createItemStack(price));
             recipe.setIngredients(ins);
             list.add(recipe);
         }
