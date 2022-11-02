@@ -375,9 +375,11 @@ public final class Merchants implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     private void onEntityRemoveFromWorld(EntityRemoveFromWorldEvent event) {
-        Spawn spawn = uuidSpawnMap.remove(event.getEntity().getUniqueId());
+        final Entity entity = event.getEntity();
+        Spawn spawn = uuidSpawnMap.remove(entity.getUniqueId());
         if (spawn == null) return;
         spawnMobMap.remove(spawn);
+        Bukkit.getScheduler().runTask(plugin, () -> entity.remove());
         plugin.getLogger().info("Removed from World: " + spawn.simplified());
     }
 
