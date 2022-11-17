@@ -339,7 +339,7 @@ public final class Merchants implements Listener {
             return player.getOpenInventory();
         }
         MerchantFile merchantFile = merchantFileMap.get(name);
-        if (merchantFile == null) throw new IllegalArgumentException("Merchant not found: " + name);
+        if (merchantFile == null) return null;
         Merchant merchant = plugin.getServer().createMerchant(displayName);
         List<MerchantRecipe> merchantRecipeList = new ArrayList<>();
         List<Recipe> recipeList = new ArrayList<>();
