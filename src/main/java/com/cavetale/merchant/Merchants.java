@@ -229,12 +229,9 @@ public final class Merchants implements Listener {
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
         head.editMeta(meta -> ((SkullMeta) meta).setPlayerProfile(player.getPlayerProfile()));
         MerchantRecipe recipe = new MerchantRecipe(head, 999);
-        recipe.setIngredients(List.of(Mytems.KITTY_COIN.createItemStack()));
-        MerchantRecipe recipe2 = new MerchantRecipe(head, 999);
-        recipe2.setIngredients(List.of(new ItemStack(Material.SKELETON_SKULL),
-                                       Mytems.RUBY.createItemStack()));
+        recipe.setIngredients(List.of(new ItemStack(Material.BONE_BLOCK), Mytems.RUBY.createItemStack(2)));
         Merchant merchant = plugin.getServer().createMerchant(displayName);
-        merchant.setRecipes(List.of(recipe, recipe2));
+        merchant.setRecipes(List.of(recipe));
         return merchant;
     }
 
