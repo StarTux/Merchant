@@ -20,6 +20,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.inventory.Inventory;
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.textOfChildren;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
@@ -146,8 +147,7 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
         sender.sendMessage(text(merchantFile.getName() + " has " + merchantFile.getRecipes().size()
                                 + " recipes:", YELLOW));
         for (Recipe recipe : merchantFile.getRecipes()) {
-            sender.sendMessage(text("" + (i++) + ") " + Items.toString(recipe),
-                                    YELLOW));
+            sender.sendMessage(textOfChildren(text("" + (i++) + ") ", YELLOW), recipe.toTradeComponent()));
         }
         return true;
     }
@@ -183,8 +183,8 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
         Recipe recipe = recipeOf(merchantFile, index);
         merchantFile.getRecipes().remove(recipe);
         plugin.merchants.saveMerchant(merchantFile);
-        sender.sendMessage(text("Deleted recipe " + merchantFile.getName() + "/" + index + ": " + Items.toString(recipe),
-                                YELLOW));
+        sender.sendMessage(textOfChildren(text("Deleted recipe " + merchantFile.getName() + "/" + index + ": ", YELLOW),
+                                          recipe.toTradeComponent()));
         return true;
     }
 
@@ -218,9 +218,9 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
         index2 = Math.max(0, Math.min(merchantFile.getRecipes().size(), index2));
         merchantFile.getRecipes().add(index2, recipe);
         plugin.merchants.saveMerchant(merchantFile);
-        sender.sendMessage(text(merchantFile.getName() + ": Recipe moved from index "
-                                + index1 + " to " + index2 + ": "
-                                + Items.toString(recipe), YELLOW));
+        sender.sendMessage(textOfChildren(text(merchantFile.getName() + ": Recipe moved from index "
+                                               + index1 + " to " + index2 + ": ", YELLOW),
+                                          recipe.toTradeComponent()));
         return true;
     }
 

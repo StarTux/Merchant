@@ -1,12 +1,9 @@
 package com.cavetale.merchant;
 
-import com.cavetale.merchant.save.Recipe;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Base64;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.io.BukkitObjectInputStream;
@@ -50,28 +47,10 @@ public final class Items {
         }
     }
 
-    public static String toString(ItemStack item) {
-        if (item == null) return "";
-        String name = Stream.of(item.getType().name().split("_"))
-            .map(s -> s.substring(0, 1) + s.substring(1).toLowerCase())
-            .collect(Collectors.joining(""));
-        return item.getAmount() + "x" + name;
-    }
-
     public static ItemStack simplify(ItemStack item) {
         if (item == null) return null;
         if (item.getAmount() == 0) return null;
         if (item.getType() == Material.AIR) return null;
         return item;
-    }
-
-    public static String toString(Recipe recipe) {
-        return "'" + recipe.getMerchant() + "' "
-            + toString(deserialize(recipe.getInA()))
-            + (recipe.getInB() != null
-               ? " + " + toString(deserialize(recipe.getInB()))
-               : "")
-            + " => " + toString(deserialize(recipe.getOut()))
-            + " max=" + recipe.getMaxUses();
     }
 }

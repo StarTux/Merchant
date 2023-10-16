@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -49,6 +48,10 @@ import org.bukkit.inventory.MerchantRecipe;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import static net.kyori.adventure.text.Component.empty;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.textOfChildren;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 @RequiredArgsConstructor
 public final class Merchants implements Listener {
@@ -295,7 +298,7 @@ public final class Merchants implements Listener {
                     }
                 }
                 Component displayName = spawn.getDisplayName();
-                if (displayName != null && !Component.empty().equals(displayName)) {
+                if (displayName != null && !empty().equals(displayName)) {
                     v.customName(displayName);
                 }
             });
@@ -315,9 +318,9 @@ public final class Merchants implements Listener {
 
     protected InventoryView openMerchant(Player player, Spawn spawn) {
         Component displayName = spawn.getDisplayName();
-        return displayName != null && !Component.empty().equals(displayName)
+        return displayName != null && !empty().equals(displayName)
             ? openMerchant(player, spawn.getMerchant(), displayName)
-            : openMerchant(player, spawn.getMerchant(), Component.text(spawn.getMerchant()));
+            : openMerchant(player, spawn.getMerchant(), text(spawn.getMerchant()));
     }
 
     /**
@@ -469,13 +472,13 @@ public final class Merchants implements Listener {
                 menu.merchantFile.getRecipes().add(recipe);
                 menu.merchantFile.fix();
                 saveMerchant(menu.merchantFile);
-                player.sendMessage(Component.text("New recipe created: " + Items.toString(recipe),
-                                                  NamedTextColor.YELLOW));
+                player.sendMessage(textOfChildren(text("New recipe created: ", YELLOW),
+                                                  recipe.toComponent()));
             } else {
                 // Editing
                 saveMerchant(menu.merchantFile);
-                player.sendMessage(Component.text("Recipe edited: " + Items.toString(recipe),
-                                                  NamedTextColor.YELLOW));
+                player.sendMessage(textOfChildren(text("Recipe edited: ", YELLOW),
+                                                  recipe.toComponent()));
             }
         } else if (inv instanceof MerchantInventory) {
             onClose(player, (MerchantInventory) inv);
