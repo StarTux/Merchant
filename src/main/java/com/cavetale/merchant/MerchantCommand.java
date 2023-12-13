@@ -110,6 +110,13 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
             .completers(merchantFileNameCompleter,
                         CommandArgCompleter.list("true", "false"))
             .senderCaller(this::merchantPersistent);
+        // Spawn
+        rootNode.addChild("spawnforreal").arguments("<name> <profession> <type> <level>")
+            .completers(merchantFileNameCompleter,
+                        CommandArgCompleter.enumLowerList(Villager.Profession.class),
+                        CommandArgCompleter.enumLowerList(Villager.Type.class),
+                        CommandArgCompleter.integer(i -> i >= 1 && i <= 5))
+            .playerCaller(this::spawnForReal);
     }
 
     boolean recipeCreate(Player player, String[] args) {
@@ -388,5 +395,29 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
             throw new CommandWarn("Spawn not found: " + arg);
         }
         return spawn;
+    }
+
+    private boolean spawnForReal(Player player, String[] args) {
+        if (args.length != 4) return false;
+        final String nameArg = args[0];
+        final String professionArg = args[1];
+        final String villagerTypeArg = args[2];
+        final String levelArg = args[3];
+        final MerchantFile merchantFile = plugin.merchants.merchantFileMap.get(nameArg);
+        if (merchantFile == null) throw new CommandWarn("Merchant not found: " + nameArg);
+        final Villager.Profession profession = CommandArgCompleter.requireEnum(Villager.Profession.class, professionArg);
+        final Villager.Type type = CommandArgCompleter.requireEnum(Villager.Type.class, villagerTypeArg);
+        final int level = CommandArgCompleter.requireInt(levelArg, i -> i >= 1 && i <= 5);
+        Villager villager = player.getWorld().spawn(player.getLocation(), Villager.class, v -> {
+                v.setAdult();
+                v.setProfession(profession);
+                v.setVillagerType(type);
+                v.setVillagerLevel(level);
+            });
+        if (villager == null) throw new CommandWarn("Failed to spawn villager!");
+        villager.setRecipes(merchantFile.toMerchantRecipeList());
+        player.sendMessage(text("Villager spawned: " + villager.getUniqueId() + ", " + villager.getRecipes().size() + " recipe(s)", YELLOW)
+                           .insertion(villager.getUniqueId().toString()));
+        return true;
     }
 }
