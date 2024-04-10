@@ -206,6 +206,7 @@ public final class Merchants implements Listener {
         List<MerchantRecipe> list = new ArrayList<>();
         for (ItemStack item : player.getInventory()) {
             if (item == null || item.getAmount() == 0 || !item.hasItemMeta()) continue;
+            if (Mytems.forItem(item) != null) continue;
             final int max = item.getType().getMaxDurability();
             if (max <= 0) continue;
             if (!(item.getItemMeta() instanceof Damageable)) continue;
