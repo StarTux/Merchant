@@ -1,8 +1,8 @@
 package com.cavetale.merchant;
 
 import com.cavetale.core.event.player.PlayerInteractNpcEvent;
-import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
 import com.cavetale.core.event.player.PluginPlayerEvent;
+import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
 import com.cavetale.core.util.Json;
 import com.cavetale.merchant.save.MerchantFile;
 import com.cavetale.merchant.save.Recipe;
@@ -10,6 +10,7 @@ import com.cavetale.merchant.save.Spawn;
 import com.cavetale.mytems.Mytems;
 import com.cavetale.mytems.MytemsPlugin;
 import com.cavetale.mytems.item.coin.BankTeller;
+import com.cavetale.mytems.item.combinable.ItemCombinerMenu;
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import io.papermc.paper.event.entity.EntityMoveEvent;
 import java.io.File;
@@ -331,13 +332,19 @@ public final class Merchants implements Listener {
      */
     protected InventoryView openMerchant(Player player, String name, Component displayName) {
         MytemsPlugin.getInstance().fixPlayerInventory(player);
-        if ("Repairman".equals(name)) {
+        switch (name) {
+        case "Repairman":
             return player.openMerchant(createRepairman(player, displayName), true);
-        } else if ("PlayerHead".equals(name)) {
+        case "PlayerHead":
             return player.openMerchant(createPlayerHeadSalesman(player, displayName), true);
-        } else if ("BankTeller".equals(name)) {
+        case "BankTeller":
             BankTeller.open(player);
             return player.getOpenInventory();
+        case "Combiner":
+            new ItemCombinerMenu(player).open();
+            return player.getOpenInventory();
+        default:
+            break;
         }
         MerchantFile merchantFile = merchantFileMap.get(name);
         if (merchantFile == null) return null;
