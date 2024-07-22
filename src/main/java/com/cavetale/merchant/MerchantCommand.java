@@ -8,6 +8,7 @@ import com.cavetale.core.util.Json;
 import com.cavetale.merchant.save.MerchantFile;
 import com.cavetale.merchant.save.Recipe;
 import com.cavetale.merchant.save.Spawn;
+import io.papermc.paper.registry.RegistryKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -91,8 +92,8 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
         spawnNode.addChild("setvillager").arguments("<name> <profession> <type> <level>")
             .description("Set villager type")
             .completers(spawnNameCompleter,
-                        CommandArgCompleter.enumLowerList(Villager.Profession.class),
-                        CommandArgCompleter.enumLowerList(Villager.Type.class),
+                        CommandArgCompleter.keyedLowerList(RegistryKey.VILLAGER_PROFESSION),
+                        CommandArgCompleter.keyedLowerList(RegistryKey.VILLAGER_TYPE),
                         CommandArgCompleter.integer(i -> i >= 1 && i <= 5))
             .senderCaller(this::spawnSetVillager);
         spawnNode.addChild("bring").arguments("<name>")
@@ -113,8 +114,8 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
         // Spawn
         rootNode.addChild("spawnforreal").arguments("<name> <profession> <type> <level>")
             .completers(merchantFileNameCompleter,
-                        CommandArgCompleter.enumLowerList(Villager.Profession.class),
-                        CommandArgCompleter.enumLowerList(Villager.Type.class),
+                        CommandArgCompleter.keyedLowerList(RegistryKey.VILLAGER_PROFESSION),
+                        CommandArgCompleter.keyedLowerList(RegistryKey.VILLAGER_TYPE),
                         CommandArgCompleter.integer(i -> i >= 1 && i <= 5))
             .playerCaller(this::spawnForReal);
     }
@@ -303,8 +304,10 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
         Spawn.Appearance appearance = new Spawn.Appearance();
         appearance.setEntityType(EntityType.VILLAGER);
         try {
-            appearance.setVillagerProfession(Villager.Profession.valueOf(args[1].toUpperCase()));
-            appearance.setVillagerType(Villager.Type.valueOf(args[2].toUpperCase()));
+            final Villager.Profession profession = CommandArgCompleter.requireKeyed(Villager.Profession.class, RegistryKey.VILLAGER_PROFESSION, args[1]);
+            final Villager.Type type = CommandArgCompleter.requireKeyed(Villager.Type.class, RegistryKey.VILLAGER_TYPE, args[2]);
+            appearance.setVillagerProfession(profession.getKey().toString());
+            appearance.setVillagerType(type.getKey().toString());
         } catch (IllegalArgumentException iae) {
             throw new CommandWarn("Invalid profession or type: " + args[1] + ", " + args[2]);
         }
@@ -405,8 +408,8 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
         final String levelArg = args[3];
         final MerchantFile merchantFile = plugin.merchants.merchantFileMap.get(nameArg);
         if (merchantFile == null) throw new CommandWarn("Merchant not found: " + nameArg);
-        final Villager.Profession profession = CommandArgCompleter.requireEnum(Villager.Profession.class, professionArg);
-        final Villager.Type type = CommandArgCompleter.requireEnum(Villager.Type.class, villagerTypeArg);
+        final Villager.Profession profession = CommandArgCompleter.requireKeyed(Villager.Profession.class, RegistryKey.VILLAGER_PROFESSION, professionArg);
+        final Villager.Type type = CommandArgCompleter.requireKeyed(Villager.Type.class, RegistryKey.VILLAGER_TYPE, villagerTypeArg);
         final int level = CommandArgCompleter.requireInt(levelArg, i -> i >= 1 && i <= 5);
         Villager villager = player.getWorld().spawn(player.getLocation(), Villager.class, v -> {
                 v.setAdult();

@@ -1,19 +1,23 @@
 package com.cavetale.merchant.save;
 
 import com.cavetale.core.util.Json;
+import io.papermc.paper.registry.RegistryKey;
+import java.io.Serializable;
 import lombok.Data;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Villager;
+import static io.papermc.paper.registry.RegistryAccess.registryAccess;
 
 /**
  * JSONable.
  */
 @Data
-public final class Spawn {
+public final class Spawn implements Serializable {
     protected String name;
     protected String world;
     protected double x;
@@ -27,11 +31,23 @@ public final class Spawn {
     protected transient Component displayNameComponent; // Cache
 
     @Data
-    public static final class Appearance {
+    public static final class Appearance implements Serializable {
         protected EntityType entityType;
-        protected Villager.Profession villagerProfession;
-        protected Villager.Type villagerType;
+        protected String villagerProfession;
+        protected String villagerType;
         protected int villagerLevel;
+
+        public Villager.Profession parseVillagerProfession() {
+            // lower case for LEGACY enums
+            final NamespacedKey key = NamespacedKey.fromString(villagerProfession.toLowerCase());
+            return registryAccess().getRegistry(RegistryKey.VILLAGER_PROFESSION).get(key);
+        }
+
+        public Villager.Type parseVillagerType() {
+            // lower case for LEGACY enums
+            final NamespacedKey key = NamespacedKey.fromString(villagerType.toLowerCase());
+            return registryAccess().getRegistry(RegistryKey.VILLAGER_TYPE).get(key);
+        }
     }
 
     public void load(Location loc) {

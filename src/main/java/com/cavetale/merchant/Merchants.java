@@ -13,6 +13,7 @@ import com.cavetale.mytems.item.coin.BankTeller;
 import com.cavetale.mytems.item.combinable.ItemCombinerMenu;
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import io.papermc.paper.event.entity.EntityMoveEvent;
+import io.papermc.paper.registry.RegistryKey;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +50,7 @@ import org.bukkit.inventory.MerchantRecipe;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import static io.papermc.paper.registry.RegistryAccess.registryAccess;
 import static net.kyori.adventure.text.Component.empty;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.Component.textOfChildren;
@@ -271,10 +273,10 @@ public final class Merchants implements Listener {
                 final Spawn.Appearance appearance = spawn.getAppearance();
                 if (appearance != null) {
                     if (appearance.getVillagerProfession() != null) {
-                        v.setProfession(appearance.getVillagerProfession());
+                        v.setProfession(appearance.parseVillagerProfession());
                     }
                     if (appearance.getVillagerType() != null) {
-                        v.setVillagerType(appearance.getVillagerType());
+                        v.setVillagerType(appearance.parseVillagerType());
                     }
                     final int lvl = appearance.getVillagerLevel();
                     if (lvl >= 1 && lvl <= 5) {
@@ -294,8 +296,8 @@ public final class Merchants implements Listener {
                     if (spawn.getMerchant().equals("Maypole")) {
                         v.setVillagerType(Villager.Type.PLAINS);
                     } else {
-                        Villager.Type[] types = Villager.Type.values();
-                        Villager.Type type = types[plugin.random.nextInt(types.length)];
+                        final List<Villager.Type> types = registryAccess().getRegistry(RegistryKey.VILLAGER_TYPE).stream().toList();
+                        final Villager.Type type = types.get(plugin.random.nextInt(types.size()));
                         v.setVillagerType(type);
                     }
                 }
