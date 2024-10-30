@@ -53,6 +53,12 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
                         CommandArgCompleter.integer(i -> i >= -1))
             .description("Edit merchant")
             .playerCaller(this::recipeEdit);
+        recipeNode.addChild("clone").arguments("<merchant> <num> [maxUses]")
+            .completers(merchantFileNameCompleter,
+                        CommandArgCompleter.integer(i -> i >= 0),
+                        CommandArgCompleter.integer(i -> i >= -1))
+            .description("Clone recipe")
+            .playerCaller(this::recipeClone);
         recipeNode.addChild("delete").arguments("<merchant> <num>")
             .completers(merchantFileNameCompleter,
                         CommandArgCompleter.integer(i -> i >= 0))
@@ -174,6 +180,28 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
         menu.recipe = recipe;
         Inventory inventory = plugin.getServer()
             .createInventory(menu, 9, text("Edit Merchant Recipe"));
+        inventory.setItem(0, Items.deserialize(recipe.getInA()));
+        inventory.setItem(1, Items.deserialize(recipe.getInB()));
+        inventory.setItem(2, Items.deserialize(recipe.getOut()));
+        menu.inventory = inventory;
+        menu.maxUses = maxUses;
+        player.openInventory(inventory);
+        return true;
+    }
+
+    private boolean recipeClone(Player player, String[] args) {
+        if (args.length < 2 || args.length > 3) return false;
+        String name = args[0];
+        int index = intOf(args[1]);
+        final int maxUses = args.length >= 3
+            ? intOf(args[2])
+            : -1;
+        MerchantFile merchantFile = merchantFileOf(name);
+        Recipe recipe = recipeOf(merchantFile, index);
+        RecipeMakerMenu menu = new RecipeMakerMenu(merchantFile.getName());
+        menu.merchantFile = merchantFile;
+        Inventory inventory = plugin.getServer()
+            .createInventory(menu, 9, text("Cloned Merchant Recipe"));
         inventory.setItem(0, Items.deserialize(recipe.getInA()));
         inventory.setItem(1, Items.deserialize(recipe.getInB()));
         inventory.setItem(2, Items.deserialize(recipe.getOut()));
