@@ -268,7 +268,7 @@ public final class Merchants implements Listener {
         if (!loc.isChunkLoaded()) return;
         Villager villager = loc.getWorld().spawn(loc, Villager.class, v -> {
                 v.setPersistent(false);
-                v.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0);
+                v.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0);
                 v.setCollidable(false);
                 final Spawn.Appearance appearance = spawn.getAppearance();
                 if (appearance != null) {
