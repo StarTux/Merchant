@@ -8,6 +8,7 @@ import com.cavetale.merchant.save.MerchantFile;
 import com.cavetale.merchant.save.Recipe;
 import com.cavetale.merchant.save.Spawn;
 import com.cavetale.mytems.Mytems;
+import com.cavetale.mytems.MytemsCategory;
 import com.cavetale.mytems.MytemsPlugin;
 import com.cavetale.mytems.item.coin.BankTeller;
 import com.cavetale.mytems.item.combinable.ItemCombinerMenu;
@@ -345,6 +346,12 @@ public final class Merchants implements Listener {
         case "Combiner":
             new ItemCombinerMenu(player).open();
             return player.getOpenInventory();
+        case "Furniture:Sofa":
+            return new FurnitureMenu(player, MytemsCategory.SOFA, 10).open();
+        case "Furniture:Armchair":
+            return new FurnitureMenu(player, MytemsCategory.ARMCHAIR, 5).open();
+        case "Furniture:Chair":
+            return new FurnitureMenu(player, MytemsCategory.CHAIR, 5).open();
         default:
             break;
         }
