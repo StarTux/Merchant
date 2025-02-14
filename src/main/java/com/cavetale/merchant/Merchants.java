@@ -271,6 +271,7 @@ public final class Merchants implements Listener {
                 v.setPersistent(false);
                 v.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0);
                 v.setCollidable(false);
+                v.setSilent(true);
                 final Spawn.Appearance appearance = spawn.getAppearance();
                 if (appearance != null) {
                     if (appearance.getVillagerProfession() != null) {
