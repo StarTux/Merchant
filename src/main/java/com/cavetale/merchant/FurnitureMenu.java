@@ -26,7 +26,7 @@ public final class FurnitureMenu {
         for (Mytems mytems : Mytems.values()) {
             if (mytems.category != category) continue;
             if (mytems == Mytems.TOILET && category == MytemsCategory.CHAIR) continue; // temporary
-            final MerchantRecipe recipe = new MerchantRecipe(mytems.createItemStack(), 1);
+            final MerchantRecipe recipe = new MerchantRecipe(mytems.createItemStack(), 64);
             recipe.setIngredients(List.of(Mytems.RUBY.createItemStack(cost), Mytems.GOLDEN_COIN.createItemStack(cost)));
             recipes.add(recipe);
         }
