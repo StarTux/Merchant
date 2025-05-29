@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.kyori.adventure.text.Component;
+import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -22,6 +23,8 @@ import org.bukkit.entity.Villager;
 import org.bukkit.inventory.Inventory;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.Component.textOfChildren;
+import static net.kyori.adventure.text.event.ClickEvent.suggestCommand;
+import static net.kyori.adventure.text.event.HoverEvent.showText;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
@@ -106,6 +109,14 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
             .completers(spawnNameCompleter)
             .description("Bring spawn to current location")
             .playerCaller(this::spawnBring);
+        spawnNode.addChild("tp").arguments("<name>")
+            .completers(spawnNameCompleter)
+            .description("Teleport to spawn")
+            .playerCaller(this::spawnTp);
+        spawnNode.addChild("spawnforreal").arguments("<name>")
+            .description("Spawn a merchant spawn as a regular entity")
+            .completers(spawnNameCompleter)
+            .playerCaller(this::spawnSpawnForReal);
         // merchant
         CommandNode merchantNode = rootNode.addChild("merchant")
             .description("Merchant options");
@@ -119,6 +130,7 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
             .senderCaller(this::merchantPersistent);
         // Spawn
         rootNode.addChild("spawnforreal").arguments("<name> <profession> <type> <level>")
+            .description("Spawn a merchant as an entity")
             .completers(merchantFileNameCompleter,
                         CommandArgCompleter.keyedLowerList(RegistryKey.VILLAGER_PROFESSION),
                         CommandArgCompleter.keyedLowerList(RegistryKey.VILLAGER_TYPE),
@@ -361,6 +373,18 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
         return true;
     }
 
+    protected boolean spawnTp(Player player, String[] args) {
+        if (args.length < 1) return false;
+        final Spawn spawn = spawnOf(args[0]);
+        final Location location = spawn.toLocation();
+        if (location == null) {
+            throw new CommandWarn("Spawn location not found: " + spawn.simplified());
+        }
+        player.teleport(location);
+        player.sendMessage(text("Teleported to spawn: " + spawn.getName(), YELLOW));
+        return true;
+    }
+
     protected boolean merchantList(CommandSender sender, String[] args) {
         if (args.length != 0) return false;
         sender.sendMessage(text("" + plugin.merchants.merchantFileMap.size() + " merchants:", YELLOW));
@@ -449,6 +473,25 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
         villager.setRecipes(merchantFile.toMerchantRecipeList());
         player.sendMessage(text("Villager spawned: " + villager.getUniqueId() + ", " + villager.getRecipes().size() + " recipe(s)", YELLOW)
                            .insertion(villager.getUniqueId().toString()));
+        return true;
+    }
+
+    private boolean spawnSpawnForReal(Player player, String[] args) {
+        if (args.length != 1) return false;
+        final String nameArg = args[0];
+        final Spawn spawn = spawnOf(args[0]);
+        final Villager villager = spawn.spawn();
+        if (villager == null) {
+            throw new CommandWarn("Failed to spawn villager: " + spawn.getName());
+        }
+        final MerchantFile merchantFile = plugin.merchants.merchantFileMap.get(spawn.getMerchant());
+        if (merchantFile != null) {
+            villager.setRecipes(merchantFile.toMerchantRecipeList());
+        }
+        player.sendMessage(text("Spawned villager: " + spawn.getName(), YELLOW)
+                           .hoverEvent(showText(text("" + villager.getUniqueId(), GRAY)))
+                           .clickEvent(suggestCommand("/kill " + villager.getUniqueId()))
+                           .insertion("" + villager.getUniqueId()));
         return true;
     }
 }

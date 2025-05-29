@@ -14,10 +14,8 @@ import com.cavetale.mytems.item.coin.BankTeller;
 import com.cavetale.mytems.item.combinable.ItemCombinerMenu;
 import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import io.papermc.paper.event.entity.EntityMoveEvent;
-import io.papermc.paper.registry.RegistryKey;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
@@ -51,7 +49,6 @@ import org.bukkit.inventory.MerchantRecipe;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
-import static io.papermc.paper.registry.RegistryAccess.registryAccess;
 import static net.kyori.adventure.text.Component.empty;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.Component.textOfChildren;
@@ -72,21 +69,6 @@ public final class Merchants implements Listener {
                                                              "Maypole",
                                                              "PlayerHead",
                                                              "BankTeller");
-
-    static final List<Villager.Profession> PROFESSIONS = Arrays
-        .asList(Villager.Profession.ARMORER,
-                Villager.Profession.BUTCHER,
-                Villager.Profession.CARTOGRAPHER,
-                Villager.Profession.CLERIC,
-                Villager.Profession.FARMER,
-                Villager.Profession.FISHERMAN,
-                Villager.Profession.FLETCHER,
-                Villager.Profession.LEATHERWORKER,
-                Villager.Profession.LIBRARIAN,
-                Villager.Profession.MASON,
-                Villager.Profession.SHEPHERD,
-                Villager.Profession.TOOLSMITH,
-                Villager.Profession.WEAPONSMITH);
 
     protected void enable() {
         merchantsFolder = new File(plugin.getDataFolder(), "merchants");
@@ -252,10 +234,6 @@ public final class Merchants implements Listener {
         uuidSpawnMap.clear();
     }
 
-    protected Villager.Profession randomProfession(List<Villager.Profession> list) {
-        return list.get(plugin.random.nextInt(list.size()));
-    }
-
     protected void spawnAll() {
         for (Spawn spawn : spawnMap.values()) {
             tryToSpawn(spawn);
@@ -267,51 +245,15 @@ public final class Merchants implements Listener {
         Location loc = spawn.toLocation();
         if (loc == null) return;
         if (!loc.isChunkLoaded()) return;
-        Villager villager = loc.getWorld().spawn(loc, Villager.class, v -> {
-                v.setPersistent(false);
-                v.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0);
-                v.setCollidable(false);
-                v.setSilent(true);
-                final Spawn.Appearance appearance = spawn.getAppearance();
-                if (appearance != null) {
-                    if (appearance.getVillagerProfession() != null) {
-                        v.setProfession(appearance.parseVillagerProfession());
-                    }
-                    if (appearance.getVillagerType() != null) {
-                        v.setVillagerType(appearance.parseVillagerType());
-                    }
-                    final int lvl = appearance.getVillagerLevel();
-                    if (lvl >= 1 && lvl <= 5) {
-                        v.setVillagerLevel(lvl);
-                    }
-                } else {
-                    if (spawn.getMerchant().equals("Repairman")) {
-                        v.setProfession(Villager.Profession.WEAPONSMITH);
-                    } else if (spawn.getMerchant().equals("Maypole")) {
-                        v.setProfession(Villager.Profession.LIBRARIAN);
-                    } else if (spawn.getMerchant().equals("PlayerHead")) {
-                        v.setProfession(Villager.Profession.CARTOGRAPHER);
-                    } else {
-                        v.setProfession(randomProfession(PROFESSIONS));
-                    }
-                    v.setVillagerLevel(5);
-                    if (spawn.getMerchant().equals("Maypole")) {
-                        v.setVillagerType(Villager.Type.PLAINS);
-                    } else {
-                        final List<Villager.Type> types = registryAccess().getRegistry(RegistryKey.VILLAGER_TYPE).stream().toList();
-                        final Villager.Type type = types.get(plugin.random.nextInt(types.size()));
-                        v.setVillagerType(type);
-                    }
-                }
-                Component displayName = spawn.getDisplayName();
-                if (displayName != null && !empty().equals(displayName)) {
-                    v.customName(displayName);
-                }
-            });
+        final Villager villager = spawn.spawn();
         if (villager == null) {
             plugin.getLogger().info("Failed to spawn: " + spawn.simplified());
             return;
         }
+        villager.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0);
+        villager.setPersistent(false);
+        villager.setCollidable(false);
+        villager.setSilent(true);
         Bukkit.getMobGoals().removeAllGoals(villager);
         spawnMobMap.put(spawn, villager.getUniqueId());
         uuidSpawnMap.put(villager.getUniqueId(), spawn);

@@ -3,6 +3,8 @@ package com.cavetale.merchant.save;
 import com.cavetale.core.util.Json;
 import io.papermc.paper.registry.RegistryKey;
 import java.io.Serializable;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.Data;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -12,12 +14,26 @@ import org.bukkit.World;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Villager;
 import static io.papermc.paper.registry.RegistryAccess.registryAccess;
+import static net.kyori.adventure.text.Component.empty;
 
 /**
  * JSONable.
  */
 @Data
 public final class Spawn implements Serializable {
+    private static final List<Villager.Profession> PROFESSIONS = List.of(Villager.Profession.ARMORER,
+            Villager.Profession.BUTCHER,
+            Villager.Profession.CARTOGRAPHER,
+            Villager.Profession.CLERIC,
+            Villager.Profession.FARMER,
+            Villager.Profession.FISHERMAN,
+            Villager.Profession.FLETCHER,
+            Villager.Profession.LEATHERWORKER,
+            Villager.Profession.LIBRARIAN,
+            Villager.Profession.MASON,
+            Villager.Profession.SHEPHERD,
+            Villager.Profession.TOOLSMITH,
+            Villager.Profession.WEAPONSMITH);
     protected String name;
     protected String world;
     protected double x;
@@ -95,5 +111,49 @@ public final class Spawn implements Serializable {
                 : Component.empty();
         }
         return displayNameComponent;
+    }
+
+    private static Villager.Profession randomProfession(List<Villager.Profession> list) {
+        return list.get(ThreadLocalRandom.current().nextInt(list.size()));
+    }
+
+    public Villager spawn() {
+        final Location loc = toLocation();
+        return loc.getWorld().spawn(loc, Villager.class, v -> {
+                if (appearance != null) {
+                    if (appearance.getVillagerProfession() != null) {
+                        v.setProfession(appearance.parseVillagerProfession());
+                    }
+                    if (appearance.getVillagerType() != null) {
+                        v.setVillagerType(appearance.parseVillagerType());
+                    }
+                    final int lvl = appearance.getVillagerLevel();
+                    if (lvl >= 1 && lvl <= 5) {
+                        v.setVillagerLevel(lvl);
+                    }
+                } else {
+                    if (merchant.equals("Repairman")) {
+                        v.setProfession(Villager.Profession.WEAPONSMITH);
+                    } else if (merchant.equals("Maypole")) {
+                        v.setProfession(Villager.Profession.LIBRARIAN);
+                    } else if (merchant.equals("PlayerHead")) {
+                        v.setProfession(Villager.Profession.CARTOGRAPHER);
+                    } else {
+                        v.setProfession(randomProfession(PROFESSIONS));
+                    }
+                    v.setVillagerLevel(5);
+                    if (merchant.equals("Maypole")) {
+                        v.setVillagerType(Villager.Type.PLAINS);
+                    } else {
+                        final List<Villager.Type> types = registryAccess().getRegistry(RegistryKey.VILLAGER_TYPE).stream().toList();
+                        final Villager.Type type = types.get(ThreadLocalRandom.current().nextInt(types.size()));
+                        v.setVillagerType(type);
+                    }
+                }
+                final Component displayName = getDisplayName();
+                if (displayName != null && !empty().equals(displayName)) {
+                    v.customName(displayName);
+                }
+            });
     }
 }
