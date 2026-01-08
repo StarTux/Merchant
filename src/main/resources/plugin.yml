@@ -2,7 +2,7 @@ main: com.cavetale.merchant.MerchantPlugin
 name: Merchant
 
 version: 0.1
-api-version: '1.21.10'
+api-version: '1.21.11'
 
 description: Merchants with custom trades
 author: StarTux
