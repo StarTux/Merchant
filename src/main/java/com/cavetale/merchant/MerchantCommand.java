@@ -117,6 +117,9 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
             .description("Spawn a merchant spawn as a regular entity")
             .completers(spawnNameCompleter)
             .playerCaller(this::spawnSpawnForReal);
+        spawnNode.addChild("spawnall").denyTabCompletion()
+            .description("Attempt to spawn all merchants")
+            .playerCaller(this::spawnSpawnAll);
         // merchant
         CommandNode merchantNode = rootNode.addChild("merchant")
             .description("Merchant options");
@@ -314,9 +317,10 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
         return true;
     }
 
-    boolean reload(CommandSender sender, String[] args) {
+    private boolean reload(CommandSender sender, String[] args) {
         plugin.merchants.unload();
         plugin.merchants.load();
+        plugin.merchants.spawnAll();
         sender.sendMessage(text("Files reloaded", YELLOW));
         return true;
     }
@@ -383,6 +387,11 @@ final class MerchantCommand extends AbstractCommand<MerchantPlugin> {
         player.teleport(location);
         player.sendMessage(text("Teleported to spawn: " + spawn.getName(), YELLOW));
         return true;
+    }
+
+    private void spawnSpawnAll(Player player) {
+        player.sendMessage(text("Attempting to spawn all merchants...", YELLOW));
+        plugin.merchants.spawnAll();
     }
 
     protected boolean merchantList(CommandSender sender, String[] args) {

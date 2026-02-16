@@ -234,7 +234,7 @@ public final class Merchants implements Listener {
         uuidSpawnMap.clear();
     }
 
-    protected void spawnAll() {
+    public void spawnAll() {
         for (Spawn spawn : spawnMap.values()) {
             tryToSpawn(spawn);
         }
